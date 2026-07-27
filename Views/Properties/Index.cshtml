@@ -1,0 +1,121 @@
+@model IEnumerable<propcontrol360.Models.Property>
+@{
+    ViewData["Title"] = "Inventario de Inmuebles & Lotes";
+}
+
+<div class="page-header d-print-none mb-4">
+    <div class="row align-items-center">
+        <div class="col">
+            <h2 class="page-title fw-extrabold text-dark">
+                <i class="ti ti-building text-primary me-2"></i>Gestión de Inmuebles, Terrenos & Lotes
+            </h2>
+        </div>
+        <div class="col-auto ms-auto">
+            <a asp-action="Create" class="btn btn-primary">
+                <i class="ti ti-plus me-1"></i> Registrar Inmueble / Lote
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table table-striped">
+            <thead>
+                <tr>
+                    <th>Imagen</th>
+                    <th>Título & Ubicación</th>
+                    <th>Categoría</th>
+                    <th>Proyecto / Bloque / Lote</th>
+                    <th>Precio</th>
+                    <th>Estado</th>
+                    <th>Asesor</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr id="prop-row-@item.Id">
+                        <td>
+                            <img src="@item.ImageUrl" class="avatar avatar-lg rounded" alt="@item.Title">
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark fs-4">@item.Title</div>
+                            <div class="text-muted small"><i class="ti ti-map-pin text-danger me-1"></i>@item.Address, @item.City</div>
+                            <div class="text-muted small"><strong>@item.AreaSqM m²</strong> @(item.Bedrooms > 0 ? $"| {item.Bedrooms} Hab | {item.Bathrooms} Baños" : "")</div>
+                        </td>
+                        <td>
+                            <span class="badge bg-blue-lt">@item.Category</span>
+                        </td>
+                        <td>
+                            @if(!string.IsNullOrEmpty(item.ProjectName)) {
+                                <div class="fw-semibold text-primary">@item.ProjectName</div>
+                            }
+                            <div class="small text-muted">
+                                @(item.BlockCode ?? "") @(item.LotNumber ?? "")
+                            </div>
+                        </td>
+                        <td class="fw-bold text-success fs-3">
+                            $@item.Price.ToString("N0") USD
+                        </td>
+                        <td>
+                            <span class="badge @(item.Status == propcontrol360.Models.PropertyStatus.Disponible ? "bg-success" : item.Status == propcontrol360.Models.PropertyStatus.Preventa ? "bg-info" : "bg-warning")">
+                                @item.Status
+                            </span>
+                        </td>
+                        <td>
+                            <div class="small fw-semibold">@(item.Agent?.FullName ?? "Sin Asignar")</div>
+                        </td>
+                        <td class="text-end">
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-primary btn-icon btn-sm" title="Editar">
+                                <i class="ti ti-edit"></i>
+                            </a>
+                            <button type="button" class="btn btn-outline-danger btn-icon btn-sm" onclick="confirmDelete(@item.Id, '@item.Title')" title="Eliminar">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function confirmDelete(id, title) {
+            Swal.fire({
+                title: '¿Confirmar eliminación?',
+                text: `¿Está seguro de que desea eliminar la propiedad "${title}"? Esta acción no se puede deshacer.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/Properties/Delete/${id}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('Eliminado', data.message, 'success');
+                            document.getElementById(`prop-row-${id}`).remove();
+                        } else {
+                            Swal.fire('Error', data.message, 'error');
+                        }
+                    })
+                    .catch(err => {
+                        Swal.fire('Error', 'No se pudo completar la eliminación.', 'error');
+                    });
+                }
+            });
+        }
+    </script>
+}

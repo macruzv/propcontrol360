@@ -1,0 +1,232 @@
+@model propcontrol360.ViewModels.DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard 360 - Control Inmobiliario";
+}
+
+<!-- Page Header -->
+<div class="page-header d-print-none mb-4">
+    <div class="row align-items-center">
+        <div class="col">
+            <div class="page-pretitle text-uppercase">Resumen Ejecutivo</div>
+            <h2 class="page-title fw-extrabold text-dark"><i class="ti ti-dashboard text-primary me-2"></i>Panel de Control 360</h2>
+        </div>
+        <div class="col-auto ms-auto d-print-none">
+            <div class="btn-list">
+                <a asp-controller="Properties" asp-action="Create" class="btn btn-primary d-none d-sm-inline-block">
+                    <i class="ti ti-plus me-1"></i> Nuevo Inmueble / Lote
+                </a>
+                <a asp-controller="Contracts" asp-action="Create" class="btn btn-success d-none d-sm-inline-block">
+                    <i class="ti ti-file-plus me-1"></i> Nueva Venta / Reserva
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards Grid (Tabler Stat Component) -->
+<div class="row row-deck row-cards mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm shadow-sm border-0">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-primary text-white avatar">
+                            <i class="ti ti-building fs-2"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium text-dark">Total Propiedades</div>
+                        <div class="text-secondary small">@Model.AvailableProperties disponibles</div>
+                    </div>
+                    <div class="col-auto">
+                        <div class="h2 mb-0 font-weight-bold text-primary">@Model.TotalProperties</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm shadow-sm border-0">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-warning text-white avatar">
+                            <i class="ti ti-users fs-2"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium text-dark">Clientes / Leads</div>
+                        <div class="text-secondary small">Capturados en Landing</div>
+                    </div>
+                    <div class="col-auto">
+                        <div class="h2 mb-0 font-weight-bold text-warning">@Model.TotalClients</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm shadow-sm border-0">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-success text-white avatar">
+                            <i class="ti ti-currency-dollar fs-2"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium text-dark">Volumen de Ventas</div>
+                        <div class="text-secondary small">Operaciones cerradas</div>
+                    </div>
+                    <div class="col-auto">
+                        <div class="h2 mb-0 font-weight-bold text-success">$@Model.TotalSalesVolume.ToString("N0")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm shadow-sm border-0">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-purple text-white avatar">
+                            <i class="ti ti-receipt-tax fs-2"></i>
+                        </span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium text-dark">Comisiones</div>
+                        <div class="text-secondary small">@Model.TotalAgents vendedores activos</div>
+                    </div>
+                    <div class="col-auto">
+                        <div class="h2 mb-0 font-weight-bold text-purple">$@Model.TotalCommissionsPaid.ToString("N0")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Tables Row -->
+<div class="row row-cards mb-4">
+    <!-- Recent Leads Table -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h3 class="card-title fw-bold text-dark mb-0">
+                    <i class="ti ti-mail-fast text-warning me-2"></i>Últimos Leads Capturados
+                </h3>
+                <a asp-controller="Clients" asp-action="Index" class="btn btn-link btn-sm">Ver todos</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Contacto</th>
+                            <th>Inmueble de Interés</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var lead in Model.RecentLeads)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">@lead.FullName</div>
+                                    <div class="text-muted small">@lead.Category</div>
+                                </td>
+                                <td>
+                                    <div><i class="ti ti-mail text-muted me-1"></i>@lead.Email</div>
+                                    <div class="small"><i class="ti ti-phone text-muted me-1"></i>@lead.Phone</div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-blue-lt">@(lead.InterestedPropertyTitle ?? "Consulta General")</span>
+                                </td>
+                                <td class="text-muted small">
+                                    @lead.CreatedDate.ToString("dd/MM/yyyy")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Vendedores Leaderboard -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-light">
+                <h3 class="card-title fw-bold text-dark mb-0">
+                    <i class="ti ti-trophy text-warning me-2"></i>Rendimiento de Vendedores
+                </h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    @foreach (var agent in Model.TopAgents)
+                    {
+                        <div class="list-group-item d-flex align-items-center">
+                            <span class="avatar avatar-md rounded-circle me-3" style="background-image: url('@agent.AvatarUrl')"></span>
+                            <div class="flex-fill">
+                                <div class="fw-bold text-dark">@agent.FullName</div>
+                                <div class="text-muted small">Comisión: @agent.CommissionRate%</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold text-success">$@agent.TotalSales.ToString("N0") USD</div>
+                                <div class="text-muted small">Ventas Totales</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Active Contracts Summary -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h3 class="card-title fw-bold text-dark mb-0">
+                    <i class="ti ti-file-certificate text-success me-2"></i>Operaciones & Contratos Recientes
+                </h3>
+                <a asp-controller="Contracts" asp-action="Index" class="btn btn-link btn-sm">Ver Todos los Contratos</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                    <thead>
+                        <tr>
+                            <th>Propiedad</th>
+                            <th>Cliente Comprador</th>
+                            <th>Vendedor</th>
+                            <th>Tipo</th>
+                            <th>Monto Total</th>
+                            <th>Comisión</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var contract in Model.ActiveContracts)
+                        {
+                            <tr>
+                                <td class="fw-bold">@contract.Property?.Title</td>
+                                <td>@contract.Client?.FullName</td>
+                                <td>@contract.Agent?.FullName</td>
+                                <td>
+                                    <span class="badge @(contract.ContractType == propcontrol360.Models.ContractType.Venta ? "bg-success" : "bg-warning")">
+                                        @contract.ContractType
+                                    </span>
+                                </td>
+                                <td class="fw-bold text-success">$@contract.TotalAmount.ToString("N0") USD</td>
+                                <td class="text-purple fw-semibold">$@contract.CommissionAmount.ToString("N0") USD</td>
+                                <td class="text-muted small">@contract.ContractDate.ToString("dd/MM/yyyy")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,75 @@
+@model propcontrol360.Models.Client
+@{
+    ViewData["Title"] = "Registrar Cliente";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-warning text-dark">
+                <h3 class="card-title fw-bold mb-0">
+                    <i class="ti ti-user-plus me-2"></i>Registrar Nuevo Cliente / Prospecto
+                </h3>
+            </div>
+            <div class="card-body">
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Nombre Completo *</label>
+                            <input asp-for="FullName" class="form-control" placeholder="Ej: Juan Pérez" />
+                            <span asp-validation-for="FullName" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Correo Electrónico *</label>
+                            <input asp-for="Email" class="form-control" placeholder="ejemplo@correo.com" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Teléfono / WhatsApp *</label>
+                            <input asp-for="Phone" class="form-control" placeholder="+1 (809) 000-0000" />
+                            <span asp-validation-for="Phone" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Cédula / RNC</label>
+                            <input asp-for="DocumentId" class="form-control" placeholder="001-0000000-0" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Tipo de Cliente</label>
+                            <select asp-for="Category" asp-items="Html.GetEnumSelectList<propcontrol360.Models.ClientCategory>()" class="form-select"></select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Categoría de Preferencia</label>
+                            <select asp-for="PreferredCategory" asp-items="Html.GetEnumSelectList<propcontrol360.Models.PropertyCategory>()" class="form-select">
+                                <option value="">-- Indiferente --</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Inmueble / Proyecto de Interés</label>
+                            <input asp-for="InterestedPropertyTitle" class="form-control" placeholder="Ej: Terreno Residencial Lote 14" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Notas u Observaciones</label>
+                            <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Detalles de requerimiento, presupuesto o seguimiento..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-warning fw-bold text-dark">
+                            <i class="ti ti-device-floppy me-1"></i> Guardar Cliente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

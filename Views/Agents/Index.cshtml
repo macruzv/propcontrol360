@@ -1,0 +1,53 @@
+@model IEnumerable<propcontrol360.Models.Agent>
+@{
+    ViewData["Title"] = "Vendedores & Asesores";
+}
+
+<div class="page-header d-print-none mb-4">
+    <div class="row align-items-center">
+        <div class="col">
+            <h2 class="page-title fw-extrabold text-dark">
+                <i class="ti ti-user-check text-purple me-2"></i>Vendedores & Asesores Inmobiliarios
+            </h2>
+        </div>
+        <div class="col-auto ms-auto">
+            <a asp-action="Create" class="btn btn-purple text-white fw-bold">
+                <i class="ti ti-user-plus me-1"></i> Registrar Vendedor
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row row-cards">
+    @foreach (var agent in Model)
+    {
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-stacked shadow-sm">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <span class="avatar avatar-xl rounded-circle shadow" style="background-image: url('@agent.AvatarUrl')"></span>
+                    </div>
+                    <h3 class="card-title fw-bold fs-3 mb-1 text-dark">@agent.FullName</h3>
+                    <div class="badge bg-purple-lt mb-3 fs-6">Asesor Inmobiliario Senior</div>
+                    
+                    <div class="row g-2 bg-light rounded p-2 mb-3">
+                        <div class="col-6 border-end">
+                            <div class="small text-muted">Comisión %</div>
+                            <div class="fw-bold text-dark fs-3">@agent.CommissionRate%</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">Ventas Cerradas</div>
+                            <div class="fw-bold text-success fs-3">$@agent.TotalSales.ToString("N0")</div>
+                        </div>
+                    </div>
+
+                    <div class="text-secondary small text-start mb-3">
+                        <div class="mb-1"><i class="ti ti-mail text-primary me-2"></i>@agent.Email</div>
+                        <div class="mb-1"><i class="ti ti-phone text-success me-2"></i>@agent.Phone</div>
+                        <div><i class="ti ti-building text-info me-2"></i>@agent.Properties.Count propiedades asignadas</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

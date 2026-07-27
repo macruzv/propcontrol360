@@ -1,0 +1,104 @@
+@model IEnumerable<propcontrol360.Models.Client>
+@{
+    ViewData["Title"] = "Clientes & Prospectos";
+}
+
+<div class="page-header d-print-none mb-4">
+    <div class="row align-items-center">
+        <div class="col">
+            <h2 class="page-title fw-extrabold text-dark">
+                <i class="ti ti-users text-warning me-2"></i>Gestión de Clientes & Leads
+            </h2>
+        </div>
+        <div class="col-auto ms-auto">
+            <a asp-action="Create" class="btn btn-warning fw-bold text-dark">
+                <i class="ti ti-user-plus me-1"></i> Registrar Cliente
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table table-striped">
+            <thead>
+                <tr>
+                    <th>Nombre Completo</th>
+                    <th>Contacto</th>
+                    <th>Cédula / RNC</th>
+                    <th>Tipo Cliente</th>
+                    <th>Inmueble / Proyecto Interesado</th>
+                    <th>Notas</th>
+                    <th>Fecha Registro</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr id="client-row-@item.Id">
+                        <td>
+                            <div class="fw-bold text-dark fs-4">@item.FullName</div>
+                        </td>
+                        <td>
+                            <div><i class="ti ti-mail text-muted me-1"></i>@item.Email</div>
+                            <div class="small text-muted"><i class="ti ti-phone text-muted me-1"></i>@item.Phone</div>
+                        </td>
+                        <td>
+                            <span class="text-muted">@(item.DocumentId ?? "N/A")</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-purple-lt">@item.Category</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-blue-lt">@(item.InterestedPropertyTitle ?? "General")</span>
+                        </td>
+                        <td class="text-muted small">
+                            @(item.Notes ?? "-")
+                        </td>
+                        <td class="text-muted small">
+                            @item.CreatedDate.ToString("dd/MM/yyyy")
+                        </td>
+                        <td class="text-end">
+                            <button type="button" class="btn btn-outline-danger btn-icon btn-sm" onclick="confirmDeleteClient(@item.Id, '@item.FullName')" title="Eliminar">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function confirmDeleteClient(id, name) {
+            Swal.fire({
+                title: '¿Eliminar Cliente?',
+                text: `¿Está seguro de que desea eliminar a "${name}"?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/Clients/Delete/${id}`, {
+                        method: 'POST'
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('Eliminado', data.message, 'success');
+                            document.getElementById(`client-row-${id}`).remove();
+                        } else {
+                            Swal.fire('Error', data.message, 'error');
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+}
