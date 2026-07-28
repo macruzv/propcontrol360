@@ -1,0 +1,71 @@
+@model propcontrol360.Models.Contract
+@{
+    ViewData["Title"] = "Registrar Contrato";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-success text-white">
+                <h3 class="card-title fw-bold text-white mb-0">
+                    <i class="ti ti-file-plus me-2"></i>Registrar Nueva Operación / Contrato
+                </h3>
+            </div>
+            <div class="card-body">
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Propiedad / Lote a Operar *</label>
+                            <select asp-for="PropertyId" asp-items="ViewBag.PropertyId" class="form-select"></select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Cliente Comprador *</label>
+                            <select asp-for="ClientId" asp-items="ViewBag.ClientId" class="form-select"></select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Vendedor / Asesor *</label>
+                            <select asp-for="AgentId" asp-items="ViewBag.AgentId" class="form-select"></select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Tipo de Operación *</label>
+                            <select asp-for="ContractType" asp-items="Html.GetEnumSelectList<propcontrol360.Models.ContractType>()" class="form-select"></select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Monto Total (USD) *</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input asp-for="TotalAmount" class="form-control" type="number" step="0.01" />
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Monto de Reserva / Inicial</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input asp-for="DownPayment" class="form-control" type="number" step="0.01" value="0.00" />
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Notas o Cláusulas Especiales</label>
+                            <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Plan de pago, plazos de inicial..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-success fw-bold">
+                            <i class="ti ti-device-floppy me-1"></i> Guardar Operación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

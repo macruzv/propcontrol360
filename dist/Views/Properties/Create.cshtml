@@ -1,0 +1,121 @@
+@model propcontrol360.Models.Property
+@{
+    ViewData["Title"] = "Registrar Inmueble / Terreno";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white">
+                <h3 class="card-title fw-bold text-white mb-0">
+                    <i class="ti ti-plus me-2"></i>Registrar Nuevo Inmueble, Terreno o Lote
+                </h3>
+            </div>
+            <div class="card-body">
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold">Título de la Propiedad / Lote *</label>
+                            <input asp-for="Title" class="form-control" placeholder="Ej: Terreno Residencial Lote 14 - Monte Verde" />
+                            <span asp-validation-for="Title" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Categoría *</label>
+                            <select asp-for="Category" asp-items="Html.GetEnumSelectList<propcontrol360.Models.PropertyCategory>()" class="form-select"></select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Estado *</label>
+                            <select asp-for="Status" asp-items="Html.GetEnumSelectList<propcontrol360.Models.PropertyStatus>()" class="form-select"></select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Precio (USD) *</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input asp-for="Price" class="form-control" type="number" step="0.01" placeholder="85000" />
+                            </div>
+                            <span asp-validation-for="Price" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Área (m²) *</label>
+                            <input asp-for="AreaSqM" class="form-control" type="number" step="0.1" placeholder="450" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Proyecto / Residencial</label>
+                            <input asp-for="ProjectName" class="form-control" placeholder="Ej: Residencial Monte Verde" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Bloque / Manzana</label>
+                            <input asp-for="BlockCode" class="form-control" placeholder="Ej: Bloque C" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Número de Lote / Apto</label>
+                            <input asp-for="LotNumber" class="form-control" placeholder="Ej: Lote 14 / Apto 302" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Habitaciones</label>
+                            <input asp-for="Bedrooms" class="form-control" type="number" value="0" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Baños</label>
+                            <input asp-for="Bathrooms" class="form-control" type="number" value="0" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Vendedor / Asesor Asignado</label>
+                            <select asp-for="AgentId" asp-items="ViewBag.AgentId" class="form-select">
+                                <option value="">-- Sin Asignar --</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold">Dirección *</label>
+                            <input asp-for="Address" class="form-control" placeholder="Ej: Calle Los Corales #12" />
+                            <span asp-validation-for="Address" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Ciudad *</label>
+                            <input asp-for="City" class="form-control" placeholder="Ej: Santo Domingo" />
+                            <span asp-validation-for="City" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold">URL de la Imagen Principal</label>
+                            <input asp-for="ImageUrl" class="form-control" placeholder="https://images.unsplash.com/..." />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Descripción Detallada</label>
+                            <textarea asp-for="Description" class="form-control" rows="3" placeholder="Detalles de deslinde, amenidades, financiamiento..."></textarea>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input asp-for="Featured" class="form-check-input" type="checkbox" id="featuredCheck" />
+                                <label class="form-check-label fw-bold" for="featuredCheck">Destacar en la Landing Page Principal</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary fw-bold">
+                            <i class="ti ti-device-floppy me-1"></i> Guardar Propiedad
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

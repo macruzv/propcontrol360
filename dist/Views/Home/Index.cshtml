@@ -1,0 +1,331 @@
+@model propcontrol360.ViewModels.LandingPageViewModel
+@{
+    ViewData["Title"] = "Proyectos Inmobiliarios, Terrenos, Casas y Apartamentos";
+}
+
+<!-- Hero Banner Section -->
+<div class="row align-items-center mb-4">
+    <div class="col-12">
+        <div class="card bg-gradient-primary text-white shadow-lg overflow-hidden border-0 rounded-3 position-relative">
+            <div class="card-body p-4 p-md-5">
+                <div class="row align-items-center">
+                    <div class="col-lg-8">
+                        <span class="badge bg-warning text-dark mb-3 px-3 py-2 fw-bold text-uppercase fs-6">
+                            <i class="ti ti-sparkles me-1"></i> Proyectos & Deslindes Garantizados
+                        </span>
+                        <h1 class="display-4 fw-extrabold text-white mb-3 tracking-tight">
+                            Encuentra tu Terreno, Casa, Apartamento o Lote Ideal
+                        </h1>
+                        <p class="fs-4 text-white-80 mb-4 me-lg-5">
+                            Gestión integral 360 para compradores, inversionistas y desarrolladores. Explora nuestro catálogo de lotes, bloques de inversión y residenciales.
+                        </p>
+
+                        <!-- Search Form -->
+                        <form method="get" asp-action="Index" class="bg-white p-3 rounded-3 shadow-sm text-dark">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-4">
+                                    <div class="input-icon">
+                                        <span class="input-icon-addon"><i class="ti ti-search"></i></span>
+                                        <input type="text" name="search" value="@Model.SearchTerm" class="form-control" placeholder="Ciudad, proyecto o título...">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <select name="category" class="form-select">
+                                        <option value="">Todas las Categorías</option>
+                                        <option value="Terreno" selected="@(Model.SelectedCategory == "Terreno")">🌳 Terrenos</option>
+                                        <option value="Lote" selected="@(Model.SelectedCategory == "Lote")">📐 Lotes Comerciales</option>
+                                        <option value="Casa" selected="@(Model.SelectedCategory == "Casa")">🏡 Casas & Villas</option>
+                                        <option value="Apartamento" selected="@(Model.SelectedCategory == "Apartamento")">🏢 Apartamentos</option>
+                                        <option value="BloqueCompleto" selected="@(Model.SelectedCategory == "BloqueCompleto")">🏗️ Bloques Completos</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="input-icon">
+                                        <span class="input-icon-addon"><i class="ti ti-currency-dollar"></i></span>
+                                        <input type="number" name="maxPrice" value="@Model.MaxPrice" class="form-control" placeholder="Precio Máximo USD">
+                                    </div>
+                                </div>
+                                <div class="col-md-2 d-grid">
+                                    <button type="submit" class="btn btn-warning fw-bold">
+                                        <i class="ti ti-filter me-1"></i> Buscar
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-lg-4 d-none d-lg-block text-center position-relative">
+                        <i class="ti ti-building-estate display-1 text-white opacity-25" style="font-size: 10rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Category Counter Badges (Tabler Stat Widgets) -->
+<div class="row row-cards mb-4">
+    <div class="col-6 col-sm-3">
+        <a asp-action="Index" asp-route-category="Terreno" class="card card-link card-link-rotate shadow-sm text-decoration-none">
+            <div class="card-body p-3 text-center">
+                <div class="text-secondary mb-1"><i class="ti ti-trees fs-1 text-success"></i></div>
+                <div class="h2 mb-0 fw-bold">@Model.TotalTerrenosLotes</div>
+                <div class="text-muted small">Terrenos & Lotes</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-sm-3">
+        <a asp-action="Index" asp-route-category="Casa" class="card card-link card-link-rotate shadow-sm text-decoration-none">
+            <div class="card-body p-3 text-center">
+                <div class="text-secondary mb-1"><i class="ti ti-home fs-1 text-primary"></i></div>
+                <div class="h2 mb-0 fw-bold">@Model.TotalCasas</div>
+                <div class="text-muted small">Casas & Villas</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-sm-3">
+        <a asp-action="Index" asp-route-category="Apartamento" class="card card-link card-link-rotate shadow-sm text-decoration-none">
+            <div class="card-body p-3 text-center">
+                <div class="text-secondary mb-1"><i class="ti ti-building fs-1 text-info"></i></div>
+                <div class="h2 mb-0 fw-bold">@Model.TotalApartamentos</div>
+                <div class="text-muted small">Apartamentos</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-sm-3">
+        <a asp-action="Index" asp-route-category="BloqueCompleto" class="card card-link card-link-rotate shadow-sm text-decoration-none">
+            <div class="card-body p-3 text-center">
+                <div class="text-secondary mb-1"><i class="ti ti-building-skyscraper fs-1 text-purple"></i></div>
+                <div class="h2 mb-0 fw-bold">@Model.TotalBloques</div>
+                <div class="text-muted small">Bloques Completo</div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Section Header -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="h2 mb-0 fw-bold text-dark"><i class="ti ti-grid-dots text-primary me-2"></i>Catálogo Inmobiliario Disponible</h2>
+        <p class="text-muted mb-0">Explore propiedades verificadas con asesoría directa de nuestros vendedores.</p>
+    </div>
+    <div>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Ver Todo</a>
+    </div>
+</div>
+
+<!-- Property Cards Grid -->
+<div class="row row-cards mb-5">
+    @if (!Model.AllProperties.Any())
+    {
+        <div class="col-12">
+            <div class="card card-body text-center p-5 shadow-sm">
+                <i class="ti ti-building-off fs-1 text-muted mb-2"></i>
+                <h3 class="fw-bold">No se encontraron propiedades</h3>
+                <p class="text-muted">Pruebe ajustando los filtros de búsqueda o consulte todo nuestro catálogo.</p>
+                <div>
+                    <a asp-action="Index" class="btn btn-primary btn-sm">Restablecer Filtros</a>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        @foreach (var property in Model.AllProperties)
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card card-stacked shadow-sm hover-shadow transition-all h-100">
+                    <div class="position-relative">
+                        <img src="@property.ImageUrl" class="card-img-top object-cover" style="height: 220px;" alt="@property.Title">
+                        
+                        <!-- Category Badge -->
+                        <span class="position-absolute top-0 start-0 m-3 badge bg-primary shadow-sm fs-6">
+                            @if(property.Category == propcontrol360.Models.PropertyCategory.Terreno || property.Category == propcontrol360.Models.PropertyCategory.Lote) {
+                                <i class="ti ti-trees me-1"></i>
+                            } else if(property.Category == propcontrol360.Models.PropertyCategory.Casa) {
+                                <i class="ti ti-home me-1"></i>
+                            } else if(property.Category == propcontrol360.Models.PropertyCategory.Apartamento) {
+                                <i class="ti ti-building me-1"></i>
+                            } else {
+                                <i class="ti ti-building-skyscraper me-1"></i>
+                            }
+                            @property.Category
+                        </span>
+
+                        <!-- Status Badge -->
+                        <span class="position-absolute top-0 end-0 m-3 badge @(property.Status == propcontrol360.Models.PropertyStatus.Disponible ? "bg-success" : property.Status == propcontrol360.Models.PropertyStatus.Preventa ? "bg-info" : "bg-warning") shadow-sm fs-6">
+                            @property.Status
+                        </span>
+                    </div>
+
+                    <div class="card-body d-flex flex-column">
+                        @if (!string.IsNullOrEmpty(property.ProjectName))
+                        {
+                            <div class="text-muted small fw-semibold text-uppercase tracking-wider mb-1">
+                                <i class="ti ti-bookmark me-1 text-primary"></i>@property.ProjectName
+                                @if(!string.IsNullOrEmpty(property.BlockCode)) { <span> | @property.BlockCode</span> }
+                                @if(!string.IsNullOrEmpty(property.LotNumber)) { <span> - @property.LotNumber</span> }
+                            </div>
+                        }
+
+                        <h3 class="card-title fw-bold fs-3 mb-2 text-dark">@property.Title</h3>
+                        
+                        <div class="text-muted small mb-3">
+                            <i class="ti ti-map-pin text-danger me-1"></i>@property.Address, @property.City
+                        </div>
+
+                        <!-- Specs Row -->
+                        <div class="row g-2 text-center bg-light rounded p-2 mb-3 mt-auto">
+                            <div class="col-4">
+                                <div class="small text-muted">Área</div>
+                                <div class="fw-bold text-dark"><i class="ti ti-ruler-2 text-primary me-1"></i>@property.AreaSqM m²</div>
+                            </div>
+                            <div class="col-4 border-start border-end">
+                                <div class="small text-muted">Hab.</div>
+                                <div class="fw-bold text-dark"><i class="ti ti-bed text-primary me-1"></i>@(property.Bedrooms > 0 ? property.Bedrooms.ToString() : "N/A")</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="small text-muted">Baños</div>
+                                <div class="fw-bold text-dark"><i class="ti ti-bath text-primary me-1"></i>@(property.Bathrooms > 0 ? property.Bathrooms.ToString() : "N/A")</div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                            <div>
+                                <span class="small text-muted d-block">Precio Venta</span>
+                                <span class="fs-2 fw-extrabold text-success">$@property.Price.ToString("N0") USD</span>
+                            </div>
+                            <button type="button" 
+                                    class="btn btn-primary btn-pill shadow-sm"
+                                    onclick="openLeadModal('@property.Title', '@(property.Agent?.FullName ?? "Asesor Inmobiliario")')">
+                                <i class="ti ti-mail-fast me-1"></i> Contactar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<!-- Featured Vendedores Showcase -->
+<div class="card bg-light border-0 shadow-sm p-4 mb-5 rounded-3">
+    <div class="card-body">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold text-dark mb-1"><i class="ti ti-users text-primary me-2"></i>Nuestros Asesores Inmobiliarios 360</h2>
+            <p class="text-muted">Equipo profesional listo para asesorarle en terrenos, lotes y proyectos residenciales.</p>
+        </div>
+        <div class="row row-cards justify-content-center">
+            @foreach (var agent in Model.ActiveAgents)
+            {
+                <div class="col-md-4 col-sm-6">
+                    <div class="card card-body text-center shadow-sm hover-shadow border-0">
+                        <div class="mb-3">
+                            <span class="avatar avatar-xl rounded-circle shadow-sm" style="background-image: url('@agent.AvatarUrl')"></span>
+                        </div>
+                        <h4 class="card-title fw-bold mb-1">@agent.FullName</h4>
+                        <div class="text-muted small mb-2"><i class="ti ti-badge-check text-success me-1"></i>Asesor Senior de Ventas</div>
+                        <div class="text-secondary small mb-3">
+                            <div><i class="ti ti-mail me-1"></i>@agent.Email</div>
+                            <div><i class="ti ti-phone me-1"></i>@agent.Phone</div>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-outline-primary btn-sm btn-pill w-100" onclick="openLeadModal('Consulta General', '@agent.FullName')">
+                                <i class="ti ti-brand-whatsapp me-1"></i> Solicitar Asesoría
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Modal de SweetAlert2 para solicitud de información e inserción de Lead
+        function openLeadModal(propertyTitle, agentName) {
+            Swal.fire({
+                title: '<strong>Solicitar Información</strong>',
+                icon: 'info',
+                html: `
+                    <p class="text-muted small mb-3">Interesado en: <strong class="text-primary">${propertyTitle}</strong></p>
+                    <p class="text-muted small mb-3">Asesor asignado: <strong>${agentName}</strong></p>
+                    <form id="swal-lead-form" class="text-start">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small mb-1">Nombre Completo *</label>
+                            <input type="text" id="lead-name" class="form-control" placeholder="Ej: Juan Pérez" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small mb-1">Correo Electrónico *</label>
+                            <input type="email" id="lead-email" class="form-control" placeholder="ejemplo@correo.com" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small mb-1">Teléfono / WhatsApp *</label>
+                            <input type="tel" id="lead-phone" class="form-control" placeholder="+1 (809) 000-0000" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small mb-1">Mensaje o Consulta</label>
+                            <textarea id="lead-message" class="form-control" rows="2" placeholder="Deseo información sobre financiamiento, deslinde o visita..."></textarea>
+                        </div>
+                    </form>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '<i class="ti ti-send me-1"></i> Enviar Solicitud',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#206bc4',
+                focusConfirm: false,
+                preConfirm: () => {
+                    const name = document.getElementById('lead-name').value.trim();
+                    const email = document.getElementById('lead-email').value.trim();
+                    const phone = document.getElementById('lead-phone').value.trim();
+                    const message = document.getElementById('lead-message').value.trim();
+
+                    if (!name || !email || !phone) {
+                        Swal.showValidationMessage('Por favor complete los campos obligatorios (*)');
+                        return false;
+                    }
+
+                    return {
+                        fullName: name,
+                        email: email,
+                        phone: phone,
+                        interestedPropertyTitle: propertyTitle,
+                        message: message
+                    };
+                }
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    // Enviar datos mediante Fetch API al backend
+                    fetch('/Home/RegisterLead', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(result.value)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                title: '¡Solicitud Enviada!',
+                                text: data.message,
+                                icon: 'success',
+                                confirmButtonColor: '#206bc4'
+                            });
+                        } else {
+                            Swal.fire({
+                                title: 'Error',
+                                text: data.message,
+                                icon: 'error',
+                                confirmButtonColor: '#d33'
+                            });
+                        }
+                    })
+                    .catch(err => {
+                        Swal.fire('Error', 'No se pudo procesar la solicitud en este momento.', 'error');
+                    });
+                }
+            });
+        }
+    </script>
+}
