@@ -3,8 +3,8 @@ using propcontrol360.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container con compilación de vistas Razor en tiempo de ejecución
-builder.Services.AddControllersWithViews().AddRazorRuntimeCompilation();
+// Add services to the container.
+builder.Services.AddControllersWithViews();
 
 // Configurar SQLite con EF Core
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
