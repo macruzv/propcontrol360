@@ -18,6 +18,31 @@
     
     <!-- Custom Styles -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <style>
+        :root {
+            --tblr-font-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;
+            --tblr-primary: #206bc4;
+            --tblr-primary-rgb: 32, 107, 196;
+        }
+        body {
+            font-family: var(--tblr-font-sans-serif);
+            background-color: #f4f6fa;
+        }
+        .bg-gradient-primary {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
+            color: #ffffff !important;
+        }
+        .text-white-80 {
+            color: rgba(255, 255, 255, 0.85) !important;
+        }
+        .transition-all {
+            transition: all 0.25s ease-in-out;
+        }
+        .hover-shadow:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 1rem 3rem rgba(31, 45, 61, 0.125) !important;
+        }
+    </style>
 </head>
 <body class="layout-boxed">
     <div class="page">
