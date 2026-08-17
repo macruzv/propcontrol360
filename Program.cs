@@ -3,6 +3,7 @@ using propcontrol360.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.WebHost.UseUrls("http://127.0.0.1:8090");
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
