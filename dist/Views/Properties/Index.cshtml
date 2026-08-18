@@ -1,84 +1,272 @@
 @model IEnumerable<propcontrol360.Models.Property>
 @{
     ViewData["Title"] = "Inventario de Inmuebles & Lotes";
+    var projectsList = ViewData["ProjectsList"] as List<propcontrol360.Models.Project> ?? new List<propcontrol360.Models.Project>();
+    var individualProps = Model.Where(p => p.Category != propcontrol360.Models.PropertyCategory.Lote && p.Category != propcontrol360.Models.PropertyCategory.Terreno).ToList();
+    var lotProps = Model.Where(p => p.Category == propcontrol360.Models.PropertyCategory.Lote || p.Category == propcontrol360.Models.PropertyCategory.Terreno).ToList();
 }
 
 <div class="page-header d-print-none mb-4">
-    <div class="row align-items-center">
-        <div class="col">
-            <h2 class="page-title fw-extrabold text-dark">
-                <i class="ti ti-building text-primary me-2"></i>Gestión de Inmuebles, Terrenos & Lotes
+    <div class="row align-items-center g-3">
+        <div class="col-12 col-md">
+            <h2 class="page-title fw-extrabold text-dark d-flex align-items-center">
+                <i class="ti ti-building text-primary me-2 fs-1"></i>
+                <span>Gestión de Inventario & Proyectos Inmobiliarios</span>
             </h2>
+            <p class="text-muted mb-0">Administra tus fraccionamientos de lotes agrupados por desarrollo e inmuebles individuales.</p>
         </div>
-        <div class="col-auto ms-auto">
-            <a asp-action="Create" class="btn btn-primary">
+        <div class="col-12 col-md-auto d-flex flex-wrap gap-2">
+            <a asp-action="MasterPlan" class="btn btn-success fw-bold shadow-sm">
+                <i class="ti ti-map-2 me-1"></i> Master Plan Interactivo
+            </a>
+            <a asp-controller="Projects" asp-action="Create" class="btn btn-outline-primary fw-bold shadow-sm">
+                <i class="ti ti-building-community me-1"></i> Nuevo Proyecto
+            </a>
+            <a asp-action="Create" class="btn btn-primary fw-bold shadow-sm">
                 <i class="ti ti-plus me-1"></i> Registrar Inmueble / Lote
             </a>
         </div>
     </div>
 </div>
 
-<div class="card shadow-sm border-0">
-    <div class="table-responsive">
-        <table class="table table-vcenter card-table table-striped">
-            <thead>
-                <tr>
-                    <th>Imagen</th>
-                    <th>Título & Ubicación</th>
-                    <th>Categoría</th>
-                    <th>Proyecto / Bloque / Lote</th>
-                    <th>Precio</th>
-                    <th>Estado</th>
-                    <th>Asesor</th>
-                    <th class="text-end">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in Model)
+<!-- Navigation Tabs for Inventory -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header p-2 bg-white">
+        <ul class="nav nav-tabs card-header-tabs" data-bs-toggle="tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <a href="#tab-projects" class="nav-link active fw-bold text-dark" data-bs-toggle="tab" aria-selected="true" role="tab">
+                    <i class="ti ti-trees text-success me-1"></i> Proyectos de Lotes & Desarrollos (@projectsList.Count)
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a href="#tab-individual" class="nav-link fw-bold text-dark" data-bs-toggle="tab" aria-selected="false" role="tab">
+                    <i class="ti ti-home text-primary me-1"></i> Inmuebles Individuales (@individualProps.Count)
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a href="#tab-all-lots" class="nav-link fw-bold text-dark" data-bs-toggle="tab" aria-selected="false" role="tab">
+                    <i class="ti ti-list text-secondary me-1"></i> Desglose de Lotes (@lotProps.Count)
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="tab-content">
+        <!-- 1. TAB: PROYECTOS DE LOTES (AGRUPADOS POR DESARROLLO) -->
+        <div class="tab-pane active show p-4" id="tab-projects" role="tabpanel">
+            <div class="row row-cards g-4">
+                @if (!projectsList.Any())
                 {
-                    <tr id="prop-row-@item.Id">
-                        <td>
-                            <img src="@item.ImageUrl" class="avatar avatar-lg rounded" alt="@item.Title">
-                        </td>
-                        <td>
-                            <div class="fw-bold text-dark fs-4">@item.Title</div>
-                            <div class="text-muted small"><i class="ti ti-map-pin text-danger me-1"></i>@item.Address, @item.City</div>
-                            <div class="text-muted small"><strong>@item.AreaSqM m²</strong> @(item.Bedrooms > 0 ? $"| {item.Bedrooms} Hab | {item.Bathrooms} Baños" : "")</div>
-                        </td>
-                        <td>
-                            <span class="badge bg-blue-lt">@item.Category</span>
-                        </td>
-                        <td>
-                            @if(!string.IsNullOrEmpty(item.ProjectName)) {
-                                <div class="fw-semibold text-primary">@item.ProjectName</div>
-                            }
-                            <div class="small text-muted">
-                                @(item.BlockCode ?? "") @(item.LotNumber ?? "")
-                            </div>
-                        </td>
-                        <td class="fw-bold text-success fs-3">
-                            $@item.Price.ToString("N0") USD
-                        </td>
-                        <td>
-                            <span class="badge @(item.Status == propcontrol360.Models.PropertyStatus.Disponible ? "bg-success" : item.Status == propcontrol360.Models.PropertyStatus.Preventa ? "bg-info" : "bg-warning")">
-                                @item.Status
-                            </span>
-                        </td>
-                        <td>
-                            <div class="small fw-semibold">@(item.Agent?.FullName ?? "Sin Asignar")</div>
-                        </td>
-                        <td class="text-end">
-                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-primary btn-icon btn-sm" title="Editar">
-                                <i class="ti ti-edit"></i>
-                            </a>
-                            <button type="button" class="btn btn-outline-danger btn-icon btn-sm" onclick="confirmDelete(@item.Id, '@item.Title')" title="Eliminar">
-                                <i class="ti ti-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
+                    <div class="col-12 text-center py-5 text-muted">
+                        <i class="ti ti-trees-off fs-1 d-block mb-2"></i>
+                        <h4 class="fw-bold">No hay proyectos de loteos registrados</h4>
+                        <p class="small">Crea un proyecto para agrupar y visualizar sus lotes en el plano aéreo.</p>
+                        <a asp-controller="Projects" asp-action="Create" class="btn btn-primary btn-sm">Registrar Proyecto</a>
+                    </div>
                 }
-            </tbody>
-        </table>
+                @foreach (var proj in projectsList)
+                {
+                    var pLots = proj.Properties.Where(p => p.Category == propcontrol360.Models.PropertyCategory.Lote || p.Category == propcontrol360.Models.PropertyCategory.Terreno).ToList();
+                    var totalLots = pLots.Count;
+                    var availLots = pLots.Count(p => p.Status == propcontrol360.Models.PropertyStatus.Disponible);
+                    var soldLots = pLots.Count(p => p.Status == propcontrol360.Models.PropertyStatus.Vendido || p.Status == propcontrol360.Models.PropertyStatus.Reservado);
+                    var pctSold = totalLots > 0 ? (int)Math.Round(((double)soldLots / totalLots) * 100) : 0;
+
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card card-stacked shadow-sm hover-shadow transition-all h-100 border-0 overflow-hidden" style="border-radius: 1rem;">
+                            <div class="position-relative">
+                                <img src="@proj.MasterPlanImageUrl" class="card-img-top object-cover" style="height: 200px;" alt="@proj.Name" onerror="this.src='/images/masterplan_aerial.jpg';">
+                                <span class="position-absolute top-0 start-0 m-3 badge bg-success shadow-sm fs-6">
+                                    <i class="ti ti-trees me-1"></i> @proj.Status
+                                </span>
+                                <span class="position-absolute top-0 end-0 m-3 badge bg-dark text-white shadow-sm fs-6">
+                                    @availLots Disponibles
+                                </span>
+                            </div>
+
+                            <div class="card-body d-flex flex-column p-4">
+                                <h3 class="card-title fw-extrabold fs-2 mb-1 text-dark">@proj.Name</h3>
+                                <div class="text-muted small mb-3">
+                                    <i class="ti ti-map-pin text-danger me-1"></i>@proj.Location, @proj.City
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between small text-muted mb-1">
+                                        <span>Progreso de Ventas: <strong>@pctSold%</strong></span>
+                                        <span>@soldLots de @totalLots lotes</span>
+                                    </div>
+                                    <div class="progress progress-sm">
+                                        <div class="progress-bar bg-success" style="width: @pctSold%" role="progressbar"></div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex flex-column gap-2 pt-3 border-top mt-auto">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="small text-muted">Precio base:</span>
+                                        <span class="fs-3 fw-extrabold text-success">$@proj.DefaultPricePerSqM.ToString("N0") / m²</span>
+                                    </div>
+                                    <div class="d-grid gap-2">
+                                        <a asp-action="MasterPlan" asp-route-projectName="@proj.Name" class="btn btn-success fw-bold shadow-sm">
+                                            <i class="ti ti-map-2 me-1"></i> Ver Master Plan & Lotes
+                                        </a>
+                                        <div class="d-flex gap-2">
+                                            <a asp-action="Create" asp-route-category="Lote" asp-route-projectName="@proj.Name" class="btn btn-outline-success btn-sm w-50 fw-bold">
+                                                <i class="ti ti-plus me-1"></i> Añadir Lote
+                                            </a>
+                                            <a asp-controller="Projects" asp-action="Edit" asp-route-id="@proj.Id" class="btn btn-outline-secondary btn-sm w-50">
+                                                <i class="ti ti-settings me-1"></i> Configurar
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- 2. TAB: INMUEBLES INDIVIDUALES (CASAS, APARTAMENTOS, ETC.) -->
+        <div class="tab-pane p-0" id="tab-individual" role="tabpanel">
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table table-striped table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Imagen</th>
+                            <th>Título & Ubicación</th>
+                            <th>Categoría</th>
+                            <th>Hab / Baños</th>
+                            <th>Precio Venta</th>
+                            <th>Estado</th>
+                            <th>Asesor</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!individualProps.Any())
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center py-5 text-muted">
+                                    <i class="ti ti-building-off fs-1 d-block mb-2"></i>
+                                    <div>No hay inmuebles individuales registrados.</div>
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var item in individualProps)
+                        {
+                            <tr id="prop-row-@item.Id">
+                                <td>
+                                    <img src="@item.ImageUrl" class="avatar avatar-lg rounded shadow-sm" alt="@item.Title">
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-dark fs-4">@item.Title</div>
+                                    <div class="text-muted small"><i class="ti ti-map-pin text-danger me-1"></i>@item.Address, @item.City</div>
+                                    <div class="text-muted small"><strong>@item.AreaSqM.ToString("N1") m²</strong></div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-blue-lt px-2 py-1">@item.Category</span>
+                                </td>
+                                <td>
+                                    <div class="small fw-bold text-dark">@(item.Bedrooms > 0 ? $"{item.Bedrooms} Hab" : "N/A")</div>
+                                    <div class="small text-muted">@(item.Bathrooms > 0 ? $"{item.Bathrooms} Baños" : "N/A")</div>
+                                </td>
+                                <td class="fw-bold text-success fs-3">
+                                    $@item.Price.ToString("N0") USD
+                                </td>
+                                <td>
+                                    <span class="badge @(item.Status == propcontrol360.Models.PropertyStatus.Disponible ? "bg-success" : item.Status == propcontrol360.Models.PropertyStatus.Preventa ? "bg-info" : "bg-warning")">
+                                        @item.Status
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="small fw-semibold">@(item.Agent?.FullName ?? "Sin Asignar")</div>
+                                </td>
+                                <td class="text-end">
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-primary btn-icon btn-sm" title="Editar">
+                                        <i class="ti ti-edit"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-outline-danger btn-icon btn-sm" onclick="confirmDelete(@item.Id, '@item.Title')" title="Eliminar">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 3. TAB: DESGLOSE DETALLADO DE TODOS LOS LOTES -->
+        <div class="tab-pane p-0" id="tab-all-lots" role="tabpanel">
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table table-striped table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Proyecto</th>
+                            <th>Manzana & Lote</th>
+                            <th>Dimensiones</th>
+                            <th>Precio Total</th>
+                            <th>Estado</th>
+                            <th>Asesor</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!lotProps.Any())
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <i class="ti ti-trees-off fs-1 d-block mb-2"></i>
+                                    <div>No hay lotes registrados.</div>
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var item in lotProps)
+                        {
+                            <tr id="prop-row-@item.Id">
+                                <td>
+                                    <div class="fw-bold text-primary">@(item.ProjectName ?? "General")</div>
+                                    <div class="small text-muted"><i class="ti ti-map-pin text-danger me-1"></i>@item.City</div>
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-dark fs-4">@(item.BlockCode ?? "") - @(item.LotNumber ?? $"Lote #{item.Id}")</div>
+                                    <div class="small text-muted">@item.Title</div>
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-dark">@item.AreaSqM.ToString("N1") m²</div>
+                                    @if (item.FrontMeters.HasValue && item.DepthMeters.HasValue)
+                                    {
+                                        <div class="small text-success">@item.FrontMeters.Value.ToString("N1")m × @item.DepthMeters.Value.ToString("N1")m</div>
+                                    }
+                                </td>
+                                <td class="fw-bold text-success fs-3">
+                                    $@item.Price.ToString("N0") USD
+                                </td>
+                                <td>
+                                    <span class="badge @(item.Status == propcontrol360.Models.PropertyStatus.Disponible ? "bg-success" : item.Status == propcontrol360.Models.PropertyStatus.Reservado ? "bg-warning text-dark" : "bg-danger")">
+                                        @item.Status
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="small fw-semibold">@(item.Agent?.FullName ?? "Sin Asignar")</div>
+                                </td>
+                                <td class="text-end">
+                                    <a asp-action="MasterPlan" asp-route-projectName="@item.ProjectName" class="btn btn-outline-success btn-sm" title="Ver en Master Plan">
+                                        <i class="ti ti-map-2 me-1"></i> Plano
+                                    </a>
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-primary btn-icon btn-sm" title="Editar">
+                                        <i class="ti ti-edit"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-outline-danger btn-icon btn-sm" onclick="confirmDelete(@item.Id, '@item.Title')" title="Eliminar">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -87,7 +275,7 @@
         function confirmDelete(id, title) {
             Swal.fire({
                 title: '¿Confirmar eliminación?',
-                text: `¿Está seguro de que desea eliminar la propiedad "${title}"? Esta acción no se puede deshacer.`,
+                text: `¿Está seguro de que desea eliminar "${title}"? Esta acción no se puede deshacer.`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
@@ -105,8 +293,15 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            Swal.fire('Eliminado', data.message, 'success');
-                            document.getElementById(`prop-row-${id}`).remove();
+                            Swal.fire({
+                                title: 'Eliminado',
+                                text: data.message,
+                                icon: 'success',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            const el = document.getElementById(`prop-row-${id}`);
+                            if (el) el.remove();
                         } else {
                             Swal.fire('Error', data.message, 'error');
                         }

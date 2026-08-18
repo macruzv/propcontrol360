@@ -1,0 +1,159 @@
+@model IEnumerable<propcontrol360.Models.Project>
+@{
+    ViewData["Title"] = "Proyectos & Desarrollos";
+}
+
+<div class="page-header d-print-none mb-4">
+    <div class="row align-items-center g-3">
+        <div class="col-12 col-md">
+            <h2 class="page-title fw-extrabold text-dark d-flex align-items-center">
+                <i class="ti ti-building-community text-primary me-2 fs-1"></i>
+                <span>Gestión de Proyectos & Desarrollos de Lotes</span>
+            </h2>
+            <p class="text-muted mb-0">Registra y configura múltiples urbanizaciones, fraccionamientos y sus planos aéreos independientes.</p>
+        </div>
+        <div class="col-12 col-md-auto d-flex gap-2">
+            <a asp-action="Create" class="btn btn-primary fw-bold shadow-sm">
+                <i class="ti ti-plus me-1"></i> Registrar Nuevo Proyecto
+            </a>
+            <a asp-controller="Properties" asp-action="MasterPlan" class="btn btn-success fw-bold shadow-sm">
+                <i class="ti ti-map-2 me-1"></i> Ver Master Plan
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th style="width: 140px;">Plano Aéreo</th>
+                    <th>Proyecto & Ubicación</th>
+                    <th>Estado</th>
+                    <th>Inventario de Lotes</th>
+                    <th>Progreso de Ventas</th>
+                    <th>Precio Base / m²</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="ti ti-folder-x fs-1 d-block mb-2"></i>
+                            <div class="fw-bold">No hay proyectos registrados todavía.</div>
+                            <div class="small">Haz clic en "Registrar Nuevo Proyecto" para comenzar.</div>
+                        </td>
+                    </tr>
+                }
+                @foreach (var proj in Model)
+                {
+                    var totalLots = proj.Properties.Count(p => p.Category == propcontrol360.Models.PropertyCategory.Lote || p.Category == propcontrol360.Models.PropertyCategory.Terreno);
+                    var availLots = proj.Properties.Count(p => p.Status == propcontrol360.Models.PropertyStatus.Disponible);
+                    var soldLots = proj.Properties.Count(p => p.Status == propcontrol360.Models.PropertyStatus.Vendido || p.Status == propcontrol360.Models.PropertyStatus.Reservado);
+                    var pctSold = totalLots > 0 ? (int)Math.Round(((double)soldLots / totalLots) * 100) : 0;
+
+                    var statusBadge = proj.Status == propcontrol360.Models.ProjectStatus.Activo ? "bg-success" :
+                                      proj.Status == propcontrol360.Models.ProjectStatus.Preventa ? "bg-info" :
+                                      proj.Status == propcontrol360.Models.ProjectStatus.Completado ? "bg-primary" : "bg-secondary";
+
+                    <tr id="proj-row-@proj.Id">
+                        <td>
+                            <a asp-controller="Properties" asp-action="MasterPlan" asp-route-projectName="@proj.Name" title="Ver Master Plan">
+                                <img src="@proj.MasterPlanImageUrl" class="rounded shadow-sm border" style="width: 120px; height: 75px; object-fit: cover;" alt="@proj.Name" onerror="this.src='/images/masterplan_aerial.jpg';" />
+                            </a>
+                        </td>
+                        <td>
+                            <div class="fw-extrabold text-dark fs-3 mb-1">@proj.Name</div>
+                            <div class="text-muted small"><i class="ti ti-map-pin text-danger me-1"></i>@proj.Location, @proj.City</div>
+                            <div class="text-secondary small mt-1 text-truncate" style="max-width: 320px;">@proj.Description</div>
+                        </td>
+                        <td>
+                            <span class="badge @statusBadge px-2 py-1">@proj.Status</span>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark fs-3 mb-1">@totalLots <span class="fs-5 text-muted fw-normal">lotes</span></div>
+                            <div class="small">
+                                <span class="text-success fw-bold"><i class="ti ti-circle-check me-1"></i>@availLots Disp.</span>
+                                <span class="text-muted ms-2">| @soldLots Vend./Res.</span>
+                            </div>
+                        </td>
+                        <td style="min-width: 140px;">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="small text-muted fw-bold">@pctSold% Vendido</span>
+                            </div>
+                            <div class="progress progress-sm">
+                                <div class="progress-bar bg-success" style="width: @pctSold%" role="progressbar" aria-valuenow="@pctSold" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-success fs-3">$@proj.DefaultPricePerSqM.ToString("N0") <span class="fs-5 text-muted fw-normal">/m²</span></div>
+                            <div class="text-muted small">Inicial: @proj.DefaultDownPaymentPercent% | @proj.DefaultMaxFinancingMonths meses</div>
+                        </td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-1">
+                                <a asp-controller="Properties" asp-action="MasterPlan" asp-route-projectName="@proj.Name" class="btn btn-outline-success btn-sm fw-bold" title="Abrir y Diseñar Plano">
+                                    <i class="ti ti-map-2 me-1"></i> Master Plan
+                                </a>
+                                <a asp-action="Edit" asp-route-id="@proj.Id" class="btn btn-outline-primary btn-icon btn-sm" title="Editar Configuración">
+                                    <i class="ti ti-edit"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-danger btn-icon btn-sm" onclick="confirmDeleteProject(@proj.Id, '@proj.Name')" title="Eliminar">
+                                    <i class="ti ti-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function confirmDeleteProject(id, name) {
+            Swal.fire({
+                title: '¿Eliminar Proyecto?',
+                text: `¿Está seguro de que desea eliminar el proyecto "${name}"? Los lotes asociados quedarán sin asignar.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/Projects/Delete/${id}`, {
+                        method: 'POST'
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                title: '¡Eliminado!',
+                                text: data.message,
+                                icon: 'success',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            const row = document.getElementById(`proj-row-${id}`);
+                            if (row) {
+                                row.style.transition = 'all 0.3s ease';
+                                row.style.opacity = '0';
+                                setTimeout(() => row.remove(), 300);
+                            }
+                        } else {
+                            Swal.fire('Error', data.message, 'error');
+                        }
+                    })
+                    .catch(err => {
+                        Swal.fire('Error', 'No se pudo completar la eliminación.', 'error');
+                    });
+                }
+            });
+        }
+    </script>
+}

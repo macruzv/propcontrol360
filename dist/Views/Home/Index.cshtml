@@ -102,110 +102,181 @@
     </div>
 </div>
 
-<!-- Section Header -->
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h2 class="h2 mb-0 fw-bold text-dark"><i class="ti ti-grid-dots text-primary me-2"></i>Catálogo Inmobiliario Disponible</h2>
-        <p class="text-muted mb-0">Explore propiedades verificadas con asesoría directa de nuestros vendedores.</p>
-    </div>
-    <div>
-        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Ver Todo</a>
-    </div>
-</div>
-
-<!-- Property Cards Grid -->
-<div class="row row-cards mb-5">
-    @if (!Model.AllProperties.Any())
-    {
-        <div class="col-12">
-            <div class="card card-body text-center p-5 shadow-sm">
-                <i class="ti ti-building-off fs-1 text-muted mb-2"></i>
-                <h3 class="fw-bold">No se encontraron propiedades</h3>
-                <p class="text-muted">Pruebe ajustando los filtros de búsqueda o consulte todo nuestro catálogo.</p>
-                <div>
-                    <a asp-action="Index" class="btn btn-primary btn-sm">Restablecer Filtros</a>
-                </div>
+<!-- 1. SECCIÓN: PROYECTOS & DESARROLLOS DE LOTES (AGRUPADOS) -->
+@if (string.IsNullOrEmpty(Model.SelectedCategory) || Model.SelectedCategory == "Terreno" || Model.SelectedCategory == "Lote")
+{
+    <div class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h2 class="h2 mb-0 fw-extrabold text-dark d-flex align-items-center">
+                    <i class="ti ti-map-2 text-success me-2 fs-1"></i> Proyectos & Desarrollos de Lotes
+                </h2>
+                <p class="text-muted mb-0">Explora el plano aéreo de cada proyecto y selecciona tu lote directamente sobre el terreno interactivo.</p>
+            </div>
+            <div>
+                <a asp-controller="Properties" asp-action="MasterPlan" class="btn btn-outline-success btn-sm fw-bold">
+                    <i class="ti ti-map-pin me-1"></i> Abrir Master Plan General
+                </a>
             </div>
         </div>
-    }
-    else
-    {
-        @foreach (var property in Model.AllProperties)
+
+        <div class="row row-cards g-3">
+            @foreach (var proj in Model.Projects)
+            {
+                var projLots = proj.Properties.Where(p => p.Category == propcontrol360.Models.PropertyCategory.Lote || p.Category == propcontrol360.Models.PropertyCategory.Terreno).ToList();
+                var totalLots = projLots.Count;
+                var availLots = projLots.Count(p => p.Status == propcontrol360.Models.PropertyStatus.Disponible);
+                var minPrice = projLots.Any() ? projLots.Min(p => p.Price) : 212500m;
+                var minArea = projLots.Any() ? projLots.Min(p => p.AreaSqM) : 800;
+                var maxArea = projLots.Any() ? projLots.Max(p => p.AreaSqM) : 1250;
+
+                <div class="col-md-6 col-lg-4">
+                    <div class="card card-stacked shadow-sm hover-shadow transition-all h-100 border-0 overflow-hidden" style="border-radius: 1rem;">
+                        <div class="position-relative">
+                            <img src="@proj.MasterPlanImageUrl" class="card-img-top object-cover" style="height: 220px;" alt="@proj.Name" onerror="this.src='/images/masterplan_aerial.jpg';">
+                            <span class="position-absolute top-0 start-0 m-3 badge bg-success shadow-sm fs-6">
+                                <i class="ti ti-trees me-1"></i> Proyecto de Lotes
+                            </span>
+                            <span class="position-absolute top-0 end-0 m-3 badge bg-dark text-white shadow-sm fs-6">
+                                @availLots Disponibles
+                            </span>
+                        </div>
+
+                        <div class="card-body d-flex flex-column p-4">
+                            <h3 class="card-title fw-extrabold fs-2 mb-1 text-dark">@proj.Name</h3>
+                            <div class="text-muted small mb-3">
+                                <i class="ti ti-map-pin text-danger me-1"></i>@proj.Location, @proj.City
+                            </div>
+
+                            <p class="text-secondary small mb-3 text-truncate-2" style="min-height: 38px;">
+                                @(string.IsNullOrWhiteSpace(proj.Description) ? "Exclusivo proyecto con lotes urbanizados, seguridad 24/7 y financiamiento directo." : proj.Description)
+                            </p>
+
+                            <!-- Specs Row -->
+                            <div class="row g-2 text-center bg-light rounded-3 p-2 mb-3 mt-auto border">
+                                <div class="col-4 border-end">
+                                    <div class="small text-muted">Lotes</div>
+                                    <div class="fw-bold text-dark fs-4"><i class="ti ti-grid-dots text-success me-1"></i>@totalLots</div>
+                                </div>
+                                <div class="col-4 border-end">
+                                    <div class="small text-muted">Metrajes</div>
+                                    <div class="fw-bold text-dark fs-5">@minArea.ToString("N0")-@maxArea.ToString("N0")m²</div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="small text-muted">Precio / m²</div>
+                                    <div class="fw-bold text-success fs-5">$@proj.DefaultPricePerSqM.ToString("N0")</div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex flex-column gap-2 pt-2 border-top">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="small text-muted">Precios desde</span>
+                                    <span class="fs-2 fw-extrabold text-success">$@minPrice.ToString("N0") USD</span>
+                                </div>
+                                <a asp-controller="Properties" asp-action="MasterPlan" asp-route-projectName="@proj.Name" class="btn btn-success btn-lg w-100 fw-bold shadow-sm">
+                                    <i class="ti ti-map-2 me-1"></i> Ver Plano & Seleccionar Lote
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<!-- 2. SECCIÓN: INMUEBLES & PROPIEDADES INDIVIDUALES -->
+@if (string.IsNullOrEmpty(Model.SelectedCategory) || (Model.SelectedCategory != "Terreno" && Model.SelectedCategory != "Lote"))
+{
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="h2 mb-0 fw-bold text-dark"><i class="ti ti-building text-primary me-2"></i>Inmuebles & Residencias Disponibles</h2>
+            <p class="text-muted mb-0">Casas, apartamentos, villas y bloques completos de inversión.</p>
+        </div>
+        <div>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Ver Todo</a>
+        </div>
+    </div>
+
+    <div class="row row-cards mb-5">
+        @if (!Model.IndividualProperties.Any())
         {
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-stacked shadow-sm hover-shadow transition-all h-100">
-                    <div class="position-relative">
-                        <img src="@property.ImageUrl" class="card-img-top object-cover" style="height: 220px;" alt="@property.Title">
-                        
-                        <!-- Category Badge -->
-                        <span class="position-absolute top-0 start-0 m-3 badge bg-primary shadow-sm fs-6">
-                            @if(property.Category == propcontrol360.Models.PropertyCategory.Terreno || property.Category == propcontrol360.Models.PropertyCategory.Lote) {
-                                <i class="ti ti-trees me-1"></i>
-                            } else if(property.Category == propcontrol360.Models.PropertyCategory.Casa) {
-                                <i class="ti ti-home me-1"></i>
-                            } else if(property.Category == propcontrol360.Models.PropertyCategory.Apartamento) {
-                                <i class="ti ti-building me-1"></i>
-                            } else {
-                                <i class="ti ti-building-skyscraper me-1"></i>
-                            }
-                            @property.Category
-                        </span>
-
-                        <!-- Status Badge -->
-                        <span class="position-absolute top-0 end-0 m-3 badge @(property.Status == propcontrol360.Models.PropertyStatus.Disponible ? "bg-success" : property.Status == propcontrol360.Models.PropertyStatus.Preventa ? "bg-info" : "bg-warning") shadow-sm fs-6">
-                            @property.Status
-                        </span>
-                    </div>
-
-                    <div class="card-body d-flex flex-column">
-                        @if (!string.IsNullOrEmpty(property.ProjectName))
-                        {
-                            <div class="text-muted small fw-semibold text-uppercase tracking-wider mb-1">
-                                <i class="ti ti-bookmark me-1 text-primary"></i>@property.ProjectName
-                                @if(!string.IsNullOrEmpty(property.BlockCode)) { <span> | @property.BlockCode</span> }
-                                @if(!string.IsNullOrEmpty(property.LotNumber)) { <span> - @property.LotNumber</span> }
-                            </div>
-                        }
-
-                        <h3 class="card-title fw-bold fs-3 mb-2 text-dark">@property.Title</h3>
-                        
-                        <div class="text-muted small mb-3">
-                            <i class="ti ti-map-pin text-danger me-1"></i>@property.Address, @property.City
-                        </div>
-
-                        <!-- Specs Row -->
-                        <div class="row g-2 text-center bg-light rounded p-2 mb-3 mt-auto">
-                            <div class="col-4">
-                                <div class="small text-muted">Área</div>
-                                <div class="fw-bold text-dark"><i class="ti ti-ruler-2 text-primary me-1"></i>@property.AreaSqM m²</div>
-                            </div>
-                            <div class="col-4 border-start border-end">
-                                <div class="small text-muted">Hab.</div>
-                                <div class="fw-bold text-dark"><i class="ti ti-bed text-primary me-1"></i>@(property.Bedrooms > 0 ? property.Bedrooms.ToString() : "N/A")</div>
-                            </div>
-                            <div class="col-4">
-                                <div class="small text-muted">Baños</div>
-                                <div class="fw-bold text-dark"><i class="ti ti-bath text-primary me-1"></i>@(property.Bathrooms > 0 ? property.Bathrooms.ToString() : "N/A")</div>
-                            </div>
-                        </div>
-
-                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                            <div>
-                                <span class="small text-muted d-block">Precio Venta</span>
-                                <span class="fs-2 fw-extrabold text-success">$@property.Price.ToString("N0") USD</span>
-                            </div>
-                            <button type="button" 
-                                    class="btn btn-primary btn-pill shadow-sm"
-                                    onclick="openLeadModal('@property.Title', '@(property.Agent?.FullName ?? "Asesor Inmobiliario")')">
-                                <i class="ti ti-mail-fast me-1"></i> Contactar
-                            </button>
-                        </div>
-                    </div>
+            <div class="col-12">
+                <div class="card card-body text-center p-5 shadow-sm">
+                    <i class="ti ti-building-off fs-1 text-muted mb-2"></i>
+                    <h3 class="fw-bold">No hay inmuebles individuales con este filtro</h3>
+                    <p class="text-muted">Pruebe seleccionando otra categoría o consulte todo nuestro catálogo.</p>
                 </div>
             </div>
         }
-    }
-</div>
+        else
+        {
+            @foreach (var property in Model.IndividualProperties)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="card card-stacked shadow-sm hover-shadow transition-all h-100">
+                        <div class="position-relative">
+                            <img src="@property.ImageUrl" class="card-img-top object-cover" style="height: 220px;" alt="@property.Title">
+                            
+                            <!-- Category Badge -->
+                            <span class="position-absolute top-0 start-0 m-3 badge bg-primary shadow-sm fs-6">
+                                @if(property.Category == propcontrol360.Models.PropertyCategory.Casa) {
+                                    <i class="ti ti-home me-1"></i>
+                                } else if(property.Category == propcontrol360.Models.PropertyCategory.Apartamento) {
+                                    <i class="ti ti-building me-1"></i>
+                                } else {
+                                    <i class="ti ti-building-skyscraper me-1"></i>
+                                }
+                                @property.Category
+                            </span>
+
+                            <!-- Status Badge -->
+                            <span class="position-absolute top-0 end-0 m-3 badge @(property.Status == propcontrol360.Models.PropertyStatus.Disponible ? "bg-success" : property.Status == propcontrol360.Models.PropertyStatus.Preventa ? "bg-info" : "bg-warning") shadow-sm fs-6">
+                                @property.Status
+                            </span>
+                        </div>
+
+                        <div class="card-body d-flex flex-column">
+                            <h3 class="card-title fw-bold fs-3 mb-2 text-dark">@property.Title</h3>
+                            
+                            <div class="text-muted small mb-3">
+                                <i class="ti ti-map-pin text-danger me-1"></i>@property.Address, @property.City
+                            </div>
+
+                            <!-- Specs Row -->
+                            <div class="row g-2 text-center bg-light rounded p-2 mb-3 mt-auto">
+                                <div class="col-4">
+                                    <div class="small text-muted">Área</div>
+                                    <div class="fw-bold text-dark"><i class="ti ti-ruler-2 text-primary me-1"></i>@property.AreaSqM m²</div>
+                                </div>
+                                <div class="col-4 border-start border-end">
+                                    <div class="small text-muted">Hab.</div>
+                                    <div class="fw-bold text-dark"><i class="ti ti-bed text-primary me-1"></i>@(property.Bedrooms > 0 ? property.Bedrooms.ToString() : "N/A")</div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="small text-muted">Baños</div>
+                                    <div class="fw-bold text-dark"><i class="ti ti-bath text-primary me-1"></i>@(property.Bathrooms > 0 ? property.Bathrooms.ToString() : "N/A")</div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                <div>
+                                    <span class="small text-muted d-block">Precio Venta</span>
+                                    <span class="fs-2 fw-extrabold text-success">$@property.Price.ToString("N0") USD</span>
+                                </div>
+                                <button type="button" 
+                                        class="btn btn-primary btn-pill shadow-sm"
+                                        onclick="openLeadModal('@property.Title', '@(property.Agent?.FullName ?? "Asesor Inmobiliario")')">
+                                    <i class="ti ti-mail-fast me-1"></i> Contactar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+}
 
 <!-- Featured Vendedores Showcase -->
 <div class="card bg-light border-0 shadow-sm p-4 mb-5 rounded-3">
