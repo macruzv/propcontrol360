@@ -195,174 +195,129 @@
     }
 </style>
 
-<!-- Clean, Customer-Focused Header (Modo Apartado / Selección) -->
-<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
-    <div class="d-flex align-items-center gap-3">
-        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary btn-icon" title="Volver al Catálogo">
-            <i class="ti ti-arrow-left fs-3"></i>
-        </a>
-        <div>
-            <div class="d-flex align-items-center gap-2">
-                <h2 class="fw-extrabold text-dark mb-0 fs-2">@selectedProject</h2>
-                <!-- Project Selector Dropdown -->
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-ghost-dark dropdown-toggle p-1 fw-bold" type="button" data-bs-toggle="dropdown">
-                        Cambiar Proyecto
-                    </button>
-                    <div class="dropdown-menu shadow">
-                        @foreach (var proj in projects)
-                        {
-                            <a class="dropdown-item @(proj == selectedProject ? "active fw-bold" : "")" asp-action="MasterPlan" asp-route-projectName="@proj">
-                                🏢 @proj
-                            </a>
-                        }
-                    </div>
-                </div>
-            </div>
-            <p class="text-muted small mb-0">
-                <i class="ti ti-pointer me-1 text-success"></i> Haz clic sobre cualquier lote para ver dimensiones y solicitar reserva.
-            </p>
+<!-- Header & Direct Editing Controls -->
+<div class="page-header d-print-none mb-3">
+    <div class="row align-items-center g-3">
+        <div class="col-12 col-md">
+            <h2 class="page-title fw-extrabold text-dark d-flex align-items-center">
+                <i class="ti ti-map-2 text-success me-2 fs-1"></i>
+                <span>Master Plan Interactivo de Lotes</span>
+            </h2>
+            <p class="text-muted mb-0">Visualiza, mapea y adapta lotes de cualquier forma geométrica (irregulares, radiales o rectangulares) sobre el plano aéreo.</p>
         </div>
-    </div>
+        <div class="col-12 col-md-auto d-flex flex-wrap gap-2">
+            <!-- View Mode Switcher -->
+            <div class="btn-group p-1 bg-white rounded-pill shadow-sm border" role="group">
+                <button type="button" class="btn btn-sm btn-success rounded-pill fw-bold" id="btnModeAerial" onclick="switchViewMode('aerial')">
+                    <i class="ti ti-photo me-1"></i> Plano Aéreo Fijo
+                </button>
+                <button type="button" class="btn btn-sm btn-ghost-dark rounded-pill fw-bold" id="btnModeGrid" onclick="switchViewMode('grid')">
+                    <i class="ti ti-layout-grid me-1"></i> Matriz de Manzanas
+                </button>
+            </div>
 
-    <!-- Right Controls: Legend & Admin/Edit Mode Toggle -->
-    <div class="d-flex align-items-center gap-3">
-        <!-- Legend Badges -->
-        <div class="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded-pill shadow-sm border small">
-            <div class="d-flex align-items-center gap-1">
-                <span class="badge bg-success rounded-circle p-1"></span> <span class="fw-bold text-dark">Disponible (@availableLots)</span>
-            </div>
-            <div class="d-flex align-items-center gap-1 ms-2">
-                <span class="badge bg-warning rounded-circle p-1"></span> <span class="text-muted">Reservado (@reservedLots)</span>
-            </div>
-            <div class="d-flex align-items-center gap-1 ms-2">
-                <span class="badge bg-danger rounded-circle p-1"></span> <span class="text-muted">Vendido (@soldLots)</span>
-            </div>
+            <!-- Boton de Modo Editor / Mapeo de Lotes -->
+            <button type="button" class="btn btn-primary fw-bold shadow-sm" id="btnToggleEditorMode" onclick="toggleEditorMode()">
+                <i class="ti ti-polygon me-1"></i> <span id="textEditorMode">Editar Esquinas & Formas</span>
+            </button>
+
+            <a asp-controller="Projects" asp-action="Index" class="btn btn-outline-primary fw-bold" title="Gestionar tabla de proyectos y planos">
+                <i class="ti ti-settings me-1"></i> Administrar Proyectos
+            </a>
+            <a asp-action="Create" asp-route-category="Lote" asp-route-projectName="@selectedProject" class="btn btn-success fw-bold shadow-sm">
+                <i class="ti ti-plus me-1"></i> Registrar Lote
+            </a>
         </div>
-
-        <!-- Botón para Abrir / Cerrar Modo Edición -->
-        <button type="button" class="btn btn-outline-primary fw-bold shadow-sm" id="btnToggleAdminPanel" onclick="toggleAdminPanel()">
-            <i class="ti ti-edit me-1"></i> <span id="textAdminBtn">Modo Edición</span>
-        </button>
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- PANEL ADMINISTRATIVO & EDICIÓN (OCULTO EN VISTA CLIENTE) -->
-<!-- ========================================== -->
-<div id="adminPanelSection" class="d-none mb-4">
-    <!-- Admin Controls Bar -->
-    <div class="card shadow-sm border-0 mb-3 bg-light">
-        <div class="card-body p-3">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-primary p-2"><i class="ti ti-adjustments-horizontal fs-4"></i></span>
-                    <strong class="text-dark">Panel de Control & Herramientas de Edición</strong>
+<!-- Project Selector & Filters Bar -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-3">
+        <form method="get" asp-action="MasterPlan" id="filterForm">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold text-muted mb-1">Proyecto / Desarrollo</label>
+                    <select name="projectName" class="form-select fw-bold text-primary" onchange="document.getElementById('filterForm').submit();">
+                        @foreach (var proj in projects)
+                        {
+                            <option value="@proj" selected="@(proj == selectedProject)">🏢 @proj</option>
+                        }
+                    </select>
                 </div>
-                <div class="d-flex flex-wrap gap-2">
-                    <!-- View Mode Switcher -->
-                    <div class="btn-group p-1 bg-white rounded-pill shadow-sm border" role="group">
-                        <button type="button" class="btn btn-sm btn-success rounded-pill fw-bold" id="btnModeAerial" onclick="switchViewMode('aerial')">
-                            <i class="ti ti-photo me-1"></i> Plano Aéreo
-                        </button>
-                        <button type="button" class="btn btn-sm btn-ghost-dark rounded-pill fw-bold" id="btnModeGrid" onclick="switchViewMode('grid')">
-                            <i class="ti ti-layout-grid me-1"></i> Matriz de Manzanas
-                        </button>
-                    </div>
-
-                    <!-- Boton de Modo Editor / Mapeo de Lotes -->
-                    <button type="button" class="btn btn-primary fw-bold" id="btnToggleEditorMode" onclick="toggleEditorMode()">
-                        <i class="ti ti-polygon me-1"></i> <span id="textEditorMode">Editar Esquinas & Formas</span>
-                    </button>
-
-                    <a asp-controller="Projects" asp-action="Index" class="btn btn-outline-primary fw-bold">
-                        <i class="ti ti-settings me-1"></i> Configurar Proyectos
-                    </a>
-                    <a asp-action="Create" asp-route-category="Lote" asp-route-projectName="@selectedProject" class="btn btn-success fw-bold">
-                        <i class="ti ti-plus me-1"></i> Registrar Lote
-                    </a>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold text-muted mb-1">Manzana / Bloque</label>
+                    <select name="blockCode" class="form-select" onchange="document.getElementById('filterForm').submit();">
+                        <option value="ALL" selected="@(selectedBlock == "ALL")">Todas las Manzanas (@blocks.Count)</option>
+                        @foreach (var b in blocks)
+                        {
+                            <option value="@b" selected="@(b == selectedBlock)">📍 @b</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold text-muted mb-1">Estado de Disponibilidad</label>
+                    <select name="status" class="form-select" onchange="document.getElementById('filterForm').submit();">
+                        <option value="">Todos los Estados</option>
+                        <option value="Disponible" selected="@(selectedStatus == propcontrol360.Models.PropertyStatus.Disponible)">🟢 Disponibles</option>
+                        <option value="Reservado" selected="@(selectedStatus == propcontrol360.Models.PropertyStatus.Reservado)">🟡 Reservados</option>
+                        <option value="Vendido" selected="@(selectedStatus == propcontrol360.Models.PropertyStatus.Vendido)">🔴 Vendidos</option>
+                    </select>
                 </div>
             </div>
-
-            <!-- Filter Controls inside Admin -->
-            <form method="get" asp-action="MasterPlan" id="filterForm">
-                <input type="hidden" name="projectName" value="@selectedProject" />
-                <div class="row g-2">
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold text-muted mb-1">Filtrar por Manzana</label>
-                        <select name="blockCode" class="form-select form-select-sm" onchange="document.getElementById('filterForm').submit();">
-                            <option value="ALL" selected="@(selectedBlock == "ALL")">Todas las Manzanas (@blocks.Count)</option>
-                            @foreach (var b in blocks)
-                            {
-                                <option value="@b" selected="@(b == selectedBlock)">📍 @b</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-bold text-muted mb-1">Filtrar por Disponibilidad</label>
-                        <select name="status" class="form-select form-select-sm" onchange="document.getElementById('filterForm').submit();">
-                            <option value="">Todos los Estados</option>
-                            <option value="Disponible" selected="@(selectedStatus == propcontrol360.Models.PropertyStatus.Disponible)">🟢 Disponibles</option>
-                            <option value="Reservado" selected="@(selectedStatus == propcontrol360.Models.PropertyStatus.Reservado)">🟡 Reservados</option>
-                            <option value="Vendido" selected="@(selectedStatus == propcontrol360.Models.PropertyStatus.Vendido)">🔴 Vendidos</option>
-                        </select>
-                    </div>
-                </div>
-            </form>
-        </div>
+        </form>
     </div>
+</div>
 
-    <!-- Quick Statistics KPI Cards -->
-    <div class="row g-3">
-        <div class="col-6 col-md-3">
-            <div class="card card-sm shadow-sm border-0 border-start border-4 border-primary">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="subheader text-muted">Total Lotes</div>
-                        <div class="ms-auto text-primary fs-3"><i class="ti ti-layout-grid"></i></div>
-                    </div>
-                    <div class="h2 mb-0 fw-extrabold text-dark">@totalLots</div>
-                    <div class="text-muted small">@totalArea.ToString("N0") m² totales</div>
+<!-- Quick Statistics KPI Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card card-sm shadow-sm border-0 border-start border-4 border-primary">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="subheader text-muted">Total Lotes</div>
+                    <div class="ms-auto text-primary fs-3"><i class="ti ti-layout-grid"></i></div>
                 </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="card card-sm shadow-sm border-0 border-start border-4 border-success">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="subheader text-success">Disponibles</div>
-                        <div class="ms-auto text-success fs-3"><i class="ti ti-circle-check"></i></div>
-                    </div>
-                    <div class="h2 mb-0 fw-extrabold text-success">@availableLots</div>
-                    <div class="text-muted small">Listos para reserva</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="card card-sm shadow-sm border-0 border-start border-4 border-warning">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="subheader text-warning">Reservados</div>
-                        <div class="ms-auto text-warning fs-3"><i class="ti ti-clock"></i></div>
-                    </div>
-                    <div class="h2 mb-0 fw-extrabold text-warning">@reservedLots</div>
-                    <div class="text-muted small">En proceso de contrato</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="card card-sm shadow-sm border-0 border-start border-4 border-danger">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="subheader text-danger">Vendidos (@percentSold%)</div>
-                        <div class="ms-auto text-danger fs-3"><i class="ti ti-lock"></i></div>
-                    </div>
-                    <div class="h2 mb-0 fw-extrabold text-danger">@soldLots</div>
-                    <div class="text-muted small">Escriturados / Financiados</div>
-                </div>
+                <div class="h1 mb-0 fw-extrabold text-dark">@totalLots</div>
+                <div class="text-muted small">@totalArea.ToString("N0") m² totales</div>
             </div>
         </div>
     </div>
+    <div class="col-6 col-md-3">
+        <div class="card card-sm shadow-sm border-0 border-start border-4 border-success">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="subheader text-success">Disponibles</div>
+                    <div class="ms-auto text-success fs-3"><i class="ti ti-circle-check"></i></div>
+                </div>
+                <div class="h1 mb-0 fw-extrabold text-success">@availableLots</div>
+                <div class="text-muted small">Listos para reserva</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card card-sm shadow-sm border-0 border-start border-4 border-warning">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="subheader text-warning">Reservados</div>
+                    <div class="ms-auto text-warning fs-3"><i class="ti ti-clock"></i></div>
+                </div>
+                <div class="h1 mb-0 fw-extrabold text-warning">@reservedLots</div>
+                <div class="text-muted small">En proceso de contrato</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card card-sm shadow-sm border-0 border-start border-4 border-danger">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="subheader text-danger">Vendidos (@percentSold%)</div>
+                    <div class="ms-auto text-danger fs-3"><i class="ti ti-lock"></i></div>
+                </div>
+                <div class="h1 mb-0 fw-extrabold text-danger">@soldLots</div>
+                <div class="text-muted small">Escriturados / Financiados</div>
+            </div>
+        </div>
 </div>
 
 <!-- ========================================== -->
