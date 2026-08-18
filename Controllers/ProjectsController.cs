@@ -33,6 +33,43 @@ namespace propcontrol360.Controllers
             return View(new Project());
         }
 
+        private async Task<string> SaveUploadedFileAsync(IFormFile file)
+        {
+            var uniqueFileName = Guid.NewGuid().ToString("N") + "_" + Path.GetFileName(file.FileName);
+            
+            var wwwRoots = new HashSet<string>();
+            if (!string.IsNullOrEmpty(_env.WebRootPath))
+                wwwRoots.Add(_env.WebRootPath);
+                
+            wwwRoots.Add(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"));
+            wwwRoots.Add(Path.Combine(Directory.GetCurrentDirectory(), "dist", "wwwroot"));
+            wwwRoots.Add(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "wwwroot"));
+
+            byte[] fileBytes;
+            using (var ms = new MemoryStream())
+            {
+                await file.CopyToAsync(ms);
+                fileBytes = ms.ToArray();
+            }
+
+            foreach (var root in wwwRoots)
+            {
+                try
+                {
+                    var targetDir = Path.Combine(root, "uploads", "projects");
+                    if (!Directory.Exists(targetDir))
+                    {
+                        Directory.CreateDirectory(targetDir);
+                    }
+                    var targetPath = Path.Combine(targetDir, uniqueFileName);
+                    await System.IO.File.WriteAllBytesAsync(targetPath, fileBytes);
+                }
+                catch { }
+            }
+
+            return $"/uploads/projects/{uniqueFileName}";
+        }
+
         // POST: Projects/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -42,23 +79,11 @@ namespace propcontrol360.Controllers
             {
                 if (planImageFile != null && planImageFile.Length > 0)
                 {
-                    var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-                    var uploadsFolder = Path.Combine(webRoot, "uploads", "projects");
-                    if (!Directory.Exists(uploadsFolder))
-                    {
-                        Directory.CreateDirectory(uploadsFolder);
-                    }
-                    var uniqueFileName = Guid.NewGuid().ToString("N") + "_" + Path.GetFileName(planImageFile.FileName);
-                    var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                    using (var fileStream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await planImageFile.CopyToAsync(fileStream);
-                    }
-                    project.MasterPlanImageUrl = $"/uploads/projects/{uniqueFileName}";
+                    project.MasterPlanImageUrl = await SaveUploadedFileAsync(planImageFile);
                 }
-                else if (string.IsNullOrWhiteSpace(project.MasterPlanImageUrl))
+                else if (string.IsNullOrWhiteSpace(project.MasterPlanImageUrl) || !project.MasterPlanImageUrl.Contains("/"))
                 {
-                    project.MasterPlanImageUrl = "/images/masterplan_aerial.jpg";
+                    project.MasterPlanImageUrl = "/images/masterplan_clean.jpg";
                 }
 
                 _context.Add(project);
@@ -93,23 +118,12 @@ namespace propcontrol360.Controllers
                 {
                     if (planImageFile != null && planImageFile.Length > 0)
                     {
-                        var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-                        var uploadsFolder = Path.Combine(webRoot, "uploads", "projects");
-                        if (!Directory.Exists(uploadsFolder))
-                        {
-                            Directory.CreateDirectory(uploadsFolder);
-                        }
-                        var uniqueFileName = Guid.NewGuid().ToString("N") + "_" + Path.GetFileName(planImageFile.FileName);
-                        var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                        using (var fileStream = new FileStream(filePath, FileMode.Create))
-                        {
-                            await planImageFile.CopyToAsync(fileStream);
-                        }
-                        project.MasterPlanImageUrl = $"/uploads/projects/{uniqueFileName}";
+                        project.MasterPlanImageUrl = await SaveUploadedFileAsync(planImageFile);
                     }
-                    else if (string.IsNullOrWhiteSpace(project.MasterPlanImageUrl))
+                    else if (string.IsNullOrWhiteSpace(project.MasterPlanImageUrl) || !project.MasterPlanImageUrl.Contains("/"))
                     {
-                        project.MasterPlanImageUrl = "/images/masterplan_aerial.jpg";
+                        var original = await _context.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
+                        project.MasterPlanImageUrl = original?.MasterPlanImageUrl ?? "/images/masterplan_clean.jpg";
                     }
 
                     _context.Update(project);

@@ -147,7 +147,6 @@
                 const reader = new FileReader();
                 reader.onload = function (e) {
                     document.getElementById("planImagePreview").src = e.target.result;
-                    document.getElementById("planImageUrlInput").value = input.files[0].name;
                 };
                 reader.readAsDataURL(input.files[0]);
             }
