@@ -135,7 +135,11 @@ namespace propcontrol360.Data
                 var allDbProjects = context.Projects.ToList();
                 foreach (var p in allDbProjects)
                 {
-                    if (string.IsNullOrWhiteSpace(p.MasterPlanImageUrl) || p.MasterPlanImageUrl == "/images/masterplan_aerial.jpg")
+                    if (p.Name == "Residencial Las Margaritas")
+                    {
+                        p.MasterPlanImageUrl = "/images/masterplan_aerial.jpg";
+                    }
+                    else if (string.IsNullOrWhiteSpace(p.MasterPlanImageUrl))
                     {
                         p.MasterPlanImageUrl = "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80";
                     }
