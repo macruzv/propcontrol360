@@ -12,7 +12,7 @@
                 </h3>
             </div>
             <div class="card-body p-4">
-                <form asp-action="Create" method="post" id="projectForm">
+                <form asp-action="Create" method="post" enctype="multipart/form-data" id="projectForm">
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
                     <!-- Master Plan Image Preview Header -->
@@ -20,11 +20,11 @@
                         <div class="row g-0 align-items-center">
                             <div class="col-md-5 text-center p-2">
                                 <img id="planImagePreview" 
-                                     src="/images/masterplan_aerial.jpg" 
+                                     src="/images/masterplan_clean.jpg" 
                                      class="img-fluid rounded border border-secondary" 
                                      style="max-height: 180px; width: 100%; object-fit: cover;" 
                                      alt="Vista previa del plano aéreo"
-                                     onerror="this.src='/images/masterplan_aerial.jpg';" />
+                                     onerror="this.onerror=null;this.src='/images/masterplan_clean.jpg';" />
                             </div>
                             <div class="col-md-7 p-4">
                                 <span class="badge bg-success-lt mb-2">Plano Aéreo del Proyecto</span>
@@ -58,16 +58,33 @@
                             <span asp-validation-for="City" class="text-danger"></span>
                         </div>
 
+                        <!-- Image File Upload / URL Selector -->
                         <div class="col-12">
-                            <label class="form-label fw-bold">URL de la Imagen del Master Plan (Plano Aéreo / Mapa Base) *</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white"><i class="ti ti-photo text-primary"></i></span>
-                                <input asp-for="MasterPlanImageUrl" id="planImageUrlInput" class="form-control" placeholder="https://... o /images/masterplan_aerial.jpg" value="/images/masterplan_aerial.jpg" required />
-                                <button type="button" class="btn btn-outline-secondary" id="btnResetDefaultPlan">
-                                    <i class="ti ti-refresh me-1"></i> Por Defecto
-                                </button>
+                            <label class="form-label fw-bold">Imagen del Master Plan (Plano Aéreo / Mapa Base) *</label>
+                            
+                            <div class="card p-3 bg-light border rounded-3">
+                                <div class="row g-3 align-items-center">
+                                    <div class="col-md-6 border-end">
+                                        <label class="form-label small fw-bold text-dark mb-1">
+                                            <i class="ti ti-upload me-1 text-primary fs-3"></i> Subir Imagen desde tu Equipo
+                                        </label>
+                                        <input type="file" name="planImageFile" id="planImageFileInput" class="form-control form-control-lg bg-white" accept="image/*" onchange="previewSelectedFile(this)" />
+                                        <div class="text-muted small mt-1">Selecciona el plano (.jpg, .png, .webp) guardado en tu PC.</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-dark mb-1">
+                                            <i class="ti ti-link me-1 text-secondary fs-3"></i> O escribir URL / ruta de imagen
+                                        </label>
+                                        <div class="input-group">
+                                            <input asp-for="MasterPlanImageUrl" id="planImageUrlInput" class="form-control form-control-lg bg-white" placeholder="/images/masterplan_clean.jpg" value="/images/masterplan_clean.jpg" />
+                                            <button type="button" class="btn btn-outline-secondary" id="btnResetDefaultPlan" title="Restablecer plano por defecto">
+                                                <i class="ti ti-refresh"></i>
+                                            </button>
+                                        </div>
+                                        <div class="text-muted small mt-1">Ruta predeterminada en el servidor.</div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="form-text text-muted small">Pega el enlace de la imagen aérea o plano arquitectónico del desarrollo.</div>
                             <span asp-validation-for="MasterPlanImageUrl" class="text-danger"></span>
                         </div>
 
@@ -123,13 +140,24 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
+        function previewSelectedFile(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById("planImagePreview").src = e.target.result;
+                    document.getElementById("planImageUrlInput").value = input.files[0].name;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", function () {
             const nameInput = document.getElementById("projectNameInput");
             const namePreview = document.getElementById("namePreviewTitle");
             const imgInput = document.getElementById("planImageUrlInput");
             const imgPreview = document.getElementById("planImagePreview");
             const btnReset = document.getElementById("btnResetDefaultPlan");
-            const defaultImg = "/images/masterplan_aerial.jpg";
+            const defaultImg = "/images/masterplan_clean.jpg";
 
             function updatePreview() {
                 const url = imgInput.value.trim();
@@ -145,6 +173,7 @@
 
             btnReset.addEventListener("click", function() {
                 imgInput.value = defaultImg;
+                document.getElementById("planImageFileInput").value = "";
                 updatePreview();
             });
         });

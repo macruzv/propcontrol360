@@ -8,10 +8,12 @@ namespace propcontrol360.Controllers
     public class ProjectsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IWebHostEnvironment _env;
 
-        public ProjectsController(ApplicationDbContext context)
+        public ProjectsController(ApplicationDbContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _env = env;
         }
 
         // GET: Projects
@@ -34,11 +36,27 @@ namespace propcontrol360.Controllers
         // POST: Projects/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Name,Description,Location,City,MasterPlanImageUrl,DefaultPricePerSqM,DefaultDownPaymentPercent,DefaultMaxFinancingMonths,Status")] Project project)
+        public async Task<IActionResult> Create([Bind("Name,Description,Location,City,MasterPlanImageUrl,DefaultPricePerSqM,DefaultDownPaymentPercent,DefaultMaxFinancingMonths,Status")] Project project, IFormFile? planImageFile)
         {
             if (ModelState.IsValid)
             {
-                if (string.IsNullOrWhiteSpace(project.MasterPlanImageUrl))
+                if (planImageFile != null && planImageFile.Length > 0)
+                {
+                    var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                    var uploadsFolder = Path.Combine(webRoot, "uploads", "projects");
+                    if (!Directory.Exists(uploadsFolder))
+                    {
+                        Directory.CreateDirectory(uploadsFolder);
+                    }
+                    var uniqueFileName = Guid.NewGuid().ToString("N") + "_" + Path.GetFileName(planImageFile.FileName);
+                    var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                    using (var fileStream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await planImageFile.CopyToAsync(fileStream);
+                    }
+                    project.MasterPlanImageUrl = $"/uploads/projects/{uniqueFileName}";
+                }
+                else if (string.IsNullOrWhiteSpace(project.MasterPlanImageUrl))
                 {
                     project.MasterPlanImageUrl = "/images/masterplan_aerial.jpg";
                 }
@@ -65,7 +83,7 @@ namespace propcontrol360.Controllers
         // POST: Projects/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Description,Location,City,MasterPlanImageUrl,DefaultPricePerSqM,DefaultDownPaymentPercent,DefaultMaxFinancingMonths,Status,CreatedAt")] Project project)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Description,Location,City,MasterPlanImageUrl,DefaultPricePerSqM,DefaultDownPaymentPercent,DefaultMaxFinancingMonths,Status,CreatedAt")] Project project, IFormFile? planImageFile)
         {
             if (id != project.Id) return NotFound();
 
@@ -73,7 +91,23 @@ namespace propcontrol360.Controllers
             {
                 try
                 {
-                    if (string.IsNullOrWhiteSpace(project.MasterPlanImageUrl))
+                    if (planImageFile != null && planImageFile.Length > 0)
+                    {
+                        var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                        var uploadsFolder = Path.Combine(webRoot, "uploads", "projects");
+                        if (!Directory.Exists(uploadsFolder))
+                        {
+                            Directory.CreateDirectory(uploadsFolder);
+                        }
+                        var uniqueFileName = Guid.NewGuid().ToString("N") + "_" + Path.GetFileName(planImageFile.FileName);
+                        var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                        using (var fileStream = new FileStream(filePath, FileMode.Create))
+                        {
+                            await planImageFile.CopyToAsync(fileStream);
+                        }
+                        project.MasterPlanImageUrl = $"/uploads/projects/{uniqueFileName}";
+                    }
+                    else if (string.IsNullOrWhiteSpace(project.MasterPlanImageUrl))
                     {
                         project.MasterPlanImageUrl = "/images/masterplan_aerial.jpg";
                     }
