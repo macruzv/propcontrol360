@@ -129,6 +129,19 @@ namespace propcontrol360.Data
                 context.Projects.AddRange(projects);
                 context.SaveChanges();
             }
+            else
+            {
+                // Asegurar que ningún proyecto existente tenga la URL de imagen vacía
+                var allDbProjects = context.Projects.ToList();
+                foreach (var p in allDbProjects)
+                {
+                    if (string.IsNullOrWhiteSpace(p.MasterPlanImageUrl) || p.MasterPlanImageUrl == "/images/masterplan_aerial.jpg")
+                    {
+                        p.MasterPlanImageUrl = "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80";
+                    }
+                }
+                context.SaveChanges();
+            }
 
             var margaritasProject = context.Projects.FirstOrDefault(p => p.Name == "Residencial Las Margaritas");
 
