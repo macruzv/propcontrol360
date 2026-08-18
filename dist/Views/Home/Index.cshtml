@@ -114,8 +114,8 @@
                 <p class="text-muted mb-0">Explora el plano aéreo de cada proyecto y selecciona tu lote directamente sobre el terreno interactivo.</p>
             </div>
             <div>
-                <a asp-controller="Properties" asp-action="MasterPlan" class="btn btn-outline-success btn-sm fw-bold">
-                    <i class="ti ti-map-pin me-1"></i> Abrir Master Plan General
+                <a asp-controller="Properties" asp-action="SelectLot" class="btn btn-outline-success btn-sm fw-bold">
+                    <i class="ti ti-map-pin me-1"></i> Explorar Plano Aéreo
                 </a>
             </div>
         </div>
@@ -173,7 +173,7 @@
                                     <span class="small text-muted">Precios desde</span>
                                     <span class="fs-2 fw-extrabold text-success">$@minPrice.ToString("N0") USD</span>
                                 </div>
-                                <a asp-controller="Properties" asp-action="MasterPlan" asp-route-projectName="@proj.Name" class="btn btn-success btn-lg w-100 fw-bold shadow-sm">
+                                <a asp-controller="Properties" asp-action="SelectLot" asp-route-projectName="@proj.Name" class="btn btn-success btn-lg w-100 fw-bold shadow-sm">
                                     <i class="ti ti-map-2 me-1"></i> Ver Plano & Seleccionar Lote
                                 </a>
                             </div>

@@ -1,0 +1,453 @@
+@model IEnumerable<propcontrol360.Models.Property>
+@{
+    ViewData["Title"] = "Seleccionar Lote - " + (ViewData["SelectedProject"]?.ToString() ?? "Proyecto");
+    var projects = ViewData["Projects"] as List<string> ?? new List<string>();
+    var selectedProject = ViewData["SelectedProject"]?.ToString() ?? "";
+    var currentProject = ViewData["CurrentProject"] as propcontrol360.Models.Project;
+    var masterPlanImageUrl = ViewData["MasterPlanImageUrl"]?.ToString() ?? "/images/masterplan_clean.jpg";
+
+    var totalLots = Model.Count();
+    var availableLots = Model.Count(p => p.Status == propcontrol360.Models.PropertyStatus.Disponible);
+    var reservedLots = Model.Count(p => p.Status == propcontrol360.Models.PropertyStatus.Reservado);
+    var soldLots = Model.Count(p => p.Status == propcontrol360.Models.PropertyStatus.Vendido);
+}
+
+<style>
+    .customer-plan-card {
+        background: #0f172a;
+        border-radius: 1.25rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+        color: #f8fafc;
+        overflow: hidden;
+    }
+    
+    .map-fixed-container {
+        position: relative;
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        background: #020617;
+        border-radius: 1rem;
+        border: 2px solid rgba(255, 255, 255, 0.15);
+        box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+        overflow: hidden;
+        user-select: none;
+    }
+    
+    .map-canvas-layer {
+        position: relative;
+        width: 100%;
+        display: block;
+    }
+    
+    .map-base-img {
+        width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 0.85rem;
+        pointer-events: none;
+    }
+    
+    .map-svg-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+    }
+
+    .lot-poly-shape {
+        cursor: pointer;
+        transition: fill-opacity 0.2s ease, stroke-width 0.2s ease, filter 0.2s ease;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+    }
+
+    .lot-poly-avail {
+        fill: rgba(16, 185, 129, 0.65);
+        stroke: #34d399;
+        stroke-width: 0.35;
+    }
+    .lot-poly-resv {
+        fill: rgba(245, 158, 11, 0.7);
+        stroke: #fbbf24;
+        stroke-width: 0.35;
+    }
+    .lot-poly-sold {
+        fill: rgba(239, 68, 68, 0.75);
+        stroke: #f87171;
+        stroke-width: 0.35;
+    }
+
+    .lot-poly-shape:hover {
+        fill-opacity: 0.95;
+        stroke-width: 0.7;
+        stroke: #ffffff;
+        filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.95));
+    }
+
+    .lot-svg-label {
+        font-weight: 900;
+        font-family: sans-serif;
+        fill: #ffffff;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+        pointer-events: none;
+        text-anchor: middle;
+        dominant-baseline: central;
+    }
+    .lot-svg-sublabel {
+        font-weight: 600;
+        font-family: sans-serif;
+        fill: rgba(255, 255, 255, 0.9);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+        pointer-events: none;
+        text-anchor: middle;
+        dominant-baseline: central;
+    }
+
+    .crm-modal-calc-box {
+        border: 1.5px solid #10b981;
+        background: #f0fdf4;
+        border-radius: 0.75rem;
+    }
+    .crm-modal-price {
+        color: #059669;
+        font-weight: 800;
+    }
+</style>
+
+<!-- Customer Clean Header -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center gap-3">
+        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary btn-icon" title="Volver al Catálogo">
+            <i class="ti ti-arrow-left fs-3"></i>
+        </a>
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h2 class="fw-extrabold text-dark mb-0 fs-2">@selectedProject</h2>
+                @if (projects.Count > 1)
+                {
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-ghost-dark dropdown-toggle p-1 fw-bold" type="button" data-bs-toggle="dropdown">
+                            Ver otro proyecto
+                        </button>
+                        <div class="dropdown-menu shadow">
+                            @foreach (var proj in projects)
+                            {
+                                <a class="dropdown-item @(proj == selectedProject ? "active fw-bold" : "")" asp-action="SelectLot" asp-route-projectName="@proj">
+                                    🏢 @proj
+                                </a>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+            <p class="text-muted small mb-0">
+                <i class="ti ti-map-pin text-danger me-1"></i>@(currentProject?.Location ?? "Ubicación Privilegiada"), @(currentProject?.City ?? "República Dominicana")
+            </p>
+        </div>
+    </div>
+
+    <!-- Availability Legend (Discreet & Clean) -->
+    <div class="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded-pill shadow-sm border small">
+        <div class="d-flex align-items-center gap-1">
+            <span class="badge bg-success rounded-circle p-1"></span> <span class="fw-bold text-dark">Disponible (@availableLots)</span>
+        </div>
+        <div class="d-flex align-items-center gap-1 ms-2">
+            <span class="badge bg-warning rounded-circle p-1"></span> <span class="text-muted">Reservado (@reservedLots)</span>
+        </div>
+        <div class="d-flex align-items-center gap-1 ms-2">
+            <span class="badge bg-danger rounded-circle p-1"></span> <span class="text-muted">Vendido (@soldLots)</span>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- PLANO AÉREO LIMPIO PARA CLIENTES         -->
+<!-- ========================================== -->
+<div class="customer-plan-card p-3 p-md-4 mb-4">
+    <!-- Map Fixed Container with SVG Overlay -->
+    <div class="map-fixed-container" id="mapMainContainer">
+        <div class="map-canvas-layer" id="mapCanvasLayer">
+            <!-- Aerial Background Image -->
+            <img src="@masterPlanImageUrl" alt="Plano Aéreo @selectedProject" class="map-base-img" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80';" />
+
+            <!-- Interactive SVG Overlay Layer (0 to 100 Coordinate System) -->
+            <svg class="map-svg-overlay" id="mapSvgOverlay" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <g id="svgLotsGroup"></g>
+                <g id="svgLabelsGroup"></g>
+            </svg>
+        </div>
+    </div>
+    
+    <div class="d-flex justify-content-between align-items-center text-muted small mt-3 px-1">
+        <div><i class="ti ti-click me-1 text-success"></i> Haz clic sobre cualquier lote para ver dimensiones y solicitar reserva.</div>
+        <div>Disponibilidad en tiempo real</div>
+    </div>
+</div>
+
+<!-- CRM LOTES MODAL INTERACTIVO -->
+<div class="modal fade" id="crmLotModal" tabindex="-1" aria-labelledby="crmLotModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem; overflow: hidden;">
+            <!-- Modal Header -->
+            <div class="modal-header border-bottom py-3 px-4 bg-white align-items-center">
+                <h4 class="modal-title fw-bold text-dark mb-0 fs-3" id="modalLotTitle">Manzana 8 - Lote 6</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body p-4 bg-white">
+                <!-- Seccion Dimensiones -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center text-dark fw-bold mb-3 fs-4">
+                        <i class="ti ti-tag text-secondary me-2 fs-3"></i> Dimensiones
+                    </div>
+                    <div class="row text-center g-2 bg-light p-3 rounded-3 border">
+                        <div class="col-4 border-end">
+                            <div class="small text-muted mb-1">Superficie</div>
+                            <div class="fw-extrabold text-dark fs-3" id="modalSuperficie">1,133.10 m²</div>
+                        </div>
+                        <div class="col-4 border-end">
+                            <div class="small text-muted mb-1">Frente</div>
+                            <div class="fw-extrabold text-dark fs-3" id="modalFrente">28.33 m</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="small text-muted mb-1">Fondo</div>
+                            <div class="fw-extrabold text-dark fs-3" id="modalFondo">40 m</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seccion Precio -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center text-dark fw-bold mb-3 fs-4">
+                        <i class="ti ti-coin text-success me-2 fs-3"></i> Precio & Financiamiento
+                    </div>
+                    <div class="bg-light p-3 rounded-3 border">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-secondary">Precio final</span>
+                            <span class="fs-2 fw-extrabold text-success" id="modalPrecioFinal">$283,275.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-secondary">Enganche mínimo (<span id="modalEnganchePct">10</span>%)</span>
+                            <span class="fw-bold text-success fs-4" id="modalEngancheMonto">$28,327.50</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-secondary">Saldo a financiar</span>
+                            <span class="fw-bold text-dark fs-4" id="modalSaldoFinanciar">$254,947.50</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seccion Opciones de Pago / Cotizador Interactivo -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center text-dark fw-bold mb-3 fs-4">
+                        <i class="ti ti-calculator text-primary me-2 fs-3"></i> Opciones de pago
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted fw-semibold">Selecciona un plazo</label>
+                        <select class="form-select form-select-lg fw-bold" id="selectPlazoMeses" onchange="calculateMonthlyPayment()">
+                            <option value="12">12 meses</option>
+                            <option value="24">24 meses</option>
+                            <option value="36">36 meses</option>
+                            <option value="48">48 meses</option>
+                            <option value="60">60 meses</option>
+                            <option value="72" selected>72 meses</option>
+                        </select>
+                    </div>
+
+                    <!-- Cuota Mensual Estimada Highlight Box -->
+                    <div class="crm-modal-calc-box p-3 text-center mb-2">
+                        <div class="text-muted small mb-1">Tu mensualidad sería de:</div>
+                        <div class="crm-modal-price fs-1" id="modalCuotaMensual">$3,540.94<span class="fs-4 text-muted fw-normal">/mes</span></div>
+                        <div class="small text-secondary" id="modalTextoPlazo">durante 72 meses</div>
+                    </div>
+                    <div class="text-center text-muted" style="font-size: 0.8rem;">
+                        *Montos aproximados sujetos a validación
+                    </div>
+                </div>
+
+                <!-- Boton CTA Principal -->
+                <div class="text-center">
+                    <p class="text-muted small mb-2">¿Deseas apartar este lote?</p>
+                    <button type="button" class="btn btn-success btn-lg w-100 fw-bold py-3 shadow" id="btnContactarLote" onclick="handleReserveLot()">
+                        <i class="ti ti-mail-fast me-2"></i> Solicitar información / Reservar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const lotsData = [
+            @foreach (var lot in Model)
+            {
+                var defaultIdx = Model.ToList().IndexOf(lot);
+                double defaultX = lot.MapPosX ?? (8.0 + (defaultIdx % 10) * 8.5);
+                double defaultY = lot.MapPosY ?? (25.0 + (defaultIdx / 10) * 16.0);
+                double defaultW = lot.MapWidth ?? 5.5;
+                double defaultH = lot.MapHeight ?? 8.5;
+                var polyCoords = lot.MapPolygonCoords ?? "";
+
+                <text>
+                {
+                    id: @lot.Id,
+                    title: "@(lot.Title?.Replace("\"", "\\\"") ?? "")",
+                    blockCode: "@(lot.BlockCode ?? "")",
+                    lotNumber: "@(lot.LotNumber ?? $"Lote {lot.Id}")",
+                    areaSqM: @lot.AreaSqM.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    price: @lot.Price.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    status: "@lot.Status.ToString()",
+                    statusClass: "@(lot.Status == propcontrol360.Models.PropertyStatus.Disponible ? "lot-poly-avail" : lot.Status == propcontrol360.Models.PropertyStatus.Reservado ? "lot-poly-resv" : "lot-poly-sold")",
+                    vertices: parseVertices("@polyCoords", @defaultX, @defaultY, @defaultW, @defaultH)
+                },
+                </text>
+            }
+        ];
+
+        function parseVertices(coordsStr, x, y, w, h) {
+            if (coordsStr && coordsStr.trim().length > 0) {
+                const pairs = coordsStr.trim().split(/\s+/);
+                const points = [];
+                for (let p of pairs) {
+                    const xy = p.split(',');
+                    if (xy.length === 2) {
+                        points.push({ x: parseFloat(xy[0]), y: parseFloat(xy[1]) });
+                    }
+                }
+                if (points.length >= 3) return points;
+            }
+            return [
+                { x: x, y: y },
+                { x: x + w, y: y },
+                { x: x + w, y: y + h },
+                { x: x, y: y + h }
+            ];
+        }
+
+        const svgLotsGroup = document.getElementById('svgLotsGroup');
+        const svgLabelsGroup = document.getElementById('svgLabelsGroup');
+
+        function renderSvgLots() {
+            svgLotsGroup.innerHTML = '';
+            svgLabelsGroup.innerHTML = '';
+
+            lotsData.forEach(lot => {
+                const pointsStr = lot.vertices.map(v => `${v.x.toFixed(2)},${v.y.toFixed(2)}`).join(' ');
+
+                const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                poly.setAttribute('points', pointsStr);
+                poly.setAttribute('class', `lot-poly-shape ${lot.statusClass}`);
+                poly.setAttribute('id', `poly-${lot.id}`);
+                poly.setAttribute('data-id', lot.id);
+
+                poly.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openLotModal(lot.id);
+                });
+
+                svgLotsGroup.appendChild(poly);
+
+                // Label (Lot Number & Area)
+                const center = calculatePolygonCenter(lot.vertices);
+                const lotText = lot.lotNumber ? lot.lotNumber.replace('Lote', '').trim() : `${lot.id}`;
+
+                const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                textEl.setAttribute('x', center.x.toFixed(2));
+                textEl.setAttribute('y', (center.y - 0.7).toFixed(2));
+                textEl.setAttribute('class', 'lot-svg-label');
+                textEl.setAttribute('font-size', '2.2');
+                textEl.textContent = lotText;
+                svgLabelsGroup.appendChild(textEl);
+
+                const areaEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                areaEl.setAttribute('x', center.x.toFixed(2));
+                areaEl.setAttribute('y', (center.y + 1.2).toFixed(2));
+                areaEl.setAttribute('class', 'lot-svg-sublabel');
+                areaEl.setAttribute('font-size', '1.3');
+                areaEl.textContent = `${Math.round(lot.areaSqM)}m²`;
+                svgLabelsGroup.appendChild(areaEl);
+            });
+        }
+
+        function calculatePolygonCenter(vertices) {
+            let totalX = 0, totalY = 0;
+            vertices.forEach(v => { totalX += v.x; totalY += v.y; });
+            return { x: totalX / vertices.length, y: totalY / vertices.length };
+        }
+
+        let currentLotData = null;
+
+        function openLotModal(lotId) {
+            fetch(`/Properties/GetLotJson/${lotId}`)
+                .then(r => r.json())
+                .then(lot => {
+                    currentLotData = lot;
+                    
+                    document.getElementById('modalLotTitle').textContent = `${lot.blockCode} - ${lot.lotNumber}`;
+                    document.getElementById('modalSuperficie').textContent = `${parseFloat(lot.areaSqM).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} m²`;
+                    document.getElementById('modalFrente').textContent = `${parseFloat(lot.frontMeters).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} m`;
+                    document.getElementById('modalFondo').textContent = `${parseFloat(lot.depthMeters).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} m`;
+                    
+                    document.getElementById('modalPrecioFinal').textContent = `$${parseFloat(lot.price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                    document.getElementById('modalEnganchePct').textContent = `${lot.minDownPaymentPercent}`;
+                    document.getElementById('modalEngancheMonto').textContent = `$${parseFloat(lot.minDownPaymentAmount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                    document.getElementById('modalSaldoFinanciar').textContent = `$${parseFloat(lot.balanceToFinance).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+                    calculateMonthlyPayment();
+
+                    const modal = new bootstrap.Modal(document.getElementById('crmLotModal'));
+                    modal.show();
+                })
+                .catch(err => {
+                    Swal.fire('Error', 'No se pudieron cargar los datos del lote.', 'error');
+                });
+        }
+
+        function calculateMonthlyPayment() {
+            if (!currentLotData) return;
+            const months = parseInt(document.getElementById('selectPlazoMeses').value) || 72;
+            const balance = currentLotData.balanceToFinance;
+            const monthlyPayment = balance / months;
+
+            document.getElementById('modalCuotaMensual').innerHTML = `$${monthlyPayment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}<span class="fs-4 text-muted fw-normal">/mes</span>`;
+            document.getElementById('modalTextoPlazo').textContent = `durante ${months} meses`;
+        }
+
+        function handleReserveLot() {
+            if (!currentLotData) return;
+            const months = document.getElementById('selectPlazoMeses').value;
+            
+            Swal.fire({
+                title: `¿Reservar ${currentLotData.blockCode} - ${currentLotData.lotNumber}?`,
+                html: `
+                    <div class="text-start small text-muted mb-2">
+                        <p class="mb-1"><strong>Proyecto:</strong> ${currentLotData.projectName}</p>
+                        <p class="mb-1"><strong>Superficie:</strong> ${currentLotData.areaSqM} m²</p>
+                        <p class="mb-1"><strong>Precio Final:</strong> $${parseFloat(currentLotData.price).toLocaleString('en-US', {minimumFractionDigits: 2})} USD</p>
+                        <p class="mb-1"><strong>Enganche Estimado:</strong> $${parseFloat(currentLotData.minDownPaymentAmount).toLocaleString('en-US', {minimumFractionDigits: 2})} USD</p>
+                        <p class="mb-0"><strong>Plazo Seleccionado:</strong> ${months} meses</p>
+                    </div>
+                `,
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonColor: '#10b981',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Crear Contrato de Reserva',
+                cancelButtonText: 'Cerrar'
+            }).then((res) => {
+                if (res.isConfirmed) {
+                    window.location.href = `/Contracts/Create?propertyId=${currentLotData.id}`;
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSvgLots();
+        });
+    </script>
+}

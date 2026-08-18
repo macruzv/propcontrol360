@@ -111,6 +111,40 @@ namespace propcontrol360.Controllers
             return View(lots);
         }
 
+        // GET: Properties/SelectLot (Vista Pública Limpia para Clientes / Selección de Lote)
+        public async Task<IActionResult> SelectLot(string? projectName)
+        {
+            var projectEntities = await _context.Projects.OrderBy(p => p.Name).ToListAsync();
+            var projects = projectEntities.Select(p => p.Name).ToList();
+
+            if (!projects.Any())
+            {
+                projects = await _context.Properties
+                    .Where(p => (p.Category == PropertyCategory.Lote || p.Category == PropertyCategory.Terreno) && !string.IsNullOrEmpty(p.ProjectName))
+                    .Select(p => p.ProjectName!)
+                    .Distinct()
+                    .ToListAsync();
+            }
+
+            var selectedProject = string.IsNullOrEmpty(projectName) ? projects.FirstOrDefault() ?? "Residencial Las Margaritas" : projectName;
+            var currentProjectEntity = projectEntities.FirstOrDefault(p => p.Name == selectedProject);
+            var masterPlanImageUrl = currentProjectEntity?.MasterPlanImageUrl ?? "/images/masterplan_aerial.jpg";
+
+            var lotsQuery = _context.Properties
+                .Include(p => p.Agent)
+                .Where(p => p.Category == PropertyCategory.Lote || p.Category == PropertyCategory.Terreno)
+                .Where(p => p.ProjectName == selectedProject || (currentProjectEntity != null && p.ProjectId == currentProjectEntity.Id));
+
+            var lots = await lotsQuery.OrderBy(p => p.BlockCode).ThenBy(p => p.LotNumber).ToListAsync();
+
+            ViewData["Projects"] = projects;
+            ViewData["SelectedProject"] = selectedProject;
+            ViewData["CurrentProject"] = currentProjectEntity;
+            ViewData["MasterPlanImageUrl"] = masterPlanImageUrl;
+
+            return View("SelectLot", lots);
+        }
+
         // GET: Properties/GetLotJson/5
         [HttpGet]
         public async Task<IActionResult> GetLotJson(int id)
