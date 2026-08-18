@@ -11,7 +11,7 @@
             </h2>
         </div>
         <div class="col-auto ms-auto">
-            <a asp-action="Create" class="btn btn-purple text-white fw-bold">
+            <a asp-action="Create" class="btn btn-purple text-white fw-bold shadow-sm">
                 <i class="ti ti-user-plus me-1"></i> Registrar Vendedor
             </a>
         </div>
@@ -21,9 +21,27 @@
 <div class="row row-cards">
     @foreach (var agent in Model)
     {
-        <div class="col-md-6 col-lg-4">
-            <div class="card card-stacked shadow-sm">
-                <div class="card-body text-center">
+        <div class="col-md-6 col-lg-4" id="agent-card-@agent.Id">
+            <div class="card card-stacked shadow-sm position-relative">
+                <!-- Dropdown con 3 puntos para acciones -->
+                <div class="position-absolute top-0 end-0 p-3" style="z-index: 10;">
+                    <div class="dropdown">
+                        <button class="btn btn-ghost-secondary btn-icon btn-sm rounded-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Opciones">
+                            <i class="ti ti-dots-vertical fs-3"></i>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <a class="dropdown-item" asp-action="Edit" asp-route-id="@agent.Id">
+                                <i class="ti ti-edit me-2 text-primary"></i> Editar Información
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <button type="button" class="dropdown-item text-danger" onclick="confirmDeleteAgent(@agent.Id, '@agent.FullName')">
+                                <i class="ti ti-trash me-2"></i> Eliminar Vendedor
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body text-center pt-4">
                     <div class="mb-3">
                         <span class="avatar avatar-xl rounded-circle shadow" style="background-image: url('@agent.AvatarUrl')"></span>
                     </div>
@@ -41,7 +59,7 @@
                         </div>
                     </div>
 
-                    <div class="text-secondary small text-start mb-3">
+                    <div class="text-secondary small text-start mb-1">
                         <div class="mb-1"><i class="ti ti-mail text-primary me-2"></i>@agent.Email</div>
                         <div class="mb-1"><i class="ti ti-phone text-success me-2"></i>@agent.Phone</div>
                         <div><i class="ti ti-building text-info me-2"></i>@agent.Properties.Count propiedades asignadas</div>
@@ -51,3 +69,50 @@
         </div>
     }
 </div>
+
+@section Scripts {
+    <script>
+        function confirmDeleteAgent(id, name) {
+            Swal.fire({
+                title: '¿Eliminar Vendedor / Asesor?',
+                text: `¿Está seguro de que desea eliminar a "${name}"? Esta acción no se puede deshacer.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/Agents/Delete/${id}`, {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                title: '¡Eliminado!',
+                                text: data.message,
+                                icon: 'success',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            const card = document.getElementById(`agent-card-${id}`);
+                            if (card) {
+                                card.style.transition = 'all 0.4s ease';
+                                card.style.opacity = '0';
+                                card.style.transform = 'scale(0.9)';
+                                setTimeout(() => card.remove(), 400);
+                            }
+                        } else {
+                            Swal.fire('Error', data.message, 'error');
+                        }
+                    })
+                    .catch(err => {
+                        Swal.fire('Error', 'No se pudo completar la eliminación.', 'error');
+                    });
+                }
+            });
+        }
+    </script>
+}

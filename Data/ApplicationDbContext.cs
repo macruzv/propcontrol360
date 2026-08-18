@@ -11,6 +11,7 @@ namespace propcontrol360.Data
         }
 
         public DbSet<Property> Properties => Set<Property>();
+        public DbSet<Project> Projects => Set<Project>();
         public DbSet<Client> Clients => Set<Client>();
         public DbSet<Agent> Agents => Set<Agent>();
         public DbSet<Contract> Contracts => Set<Contract>();
@@ -18,6 +19,12 @@ namespace propcontrol360.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Property>()
+                .HasOne(p => p.Project)
+                .WithMany(pr => pr.Properties)
+                .HasForeignKey(p => p.ProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<Property>()
                 .HasOne(p => p.Agent)

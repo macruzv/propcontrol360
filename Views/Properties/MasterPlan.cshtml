@@ -1,0 +1,1065 @@
+@model IEnumerable<propcontrol360.Models.Property>
+@{
+    ViewData["Title"] = "Master Plan Interactivo de Lotes";
+    var projects = ViewData["Projects"] as List<string> ?? new List<string>();
+    var selectedProject = ViewData["SelectedProject"]?.ToString() ?? "";
+    var blocks = ViewData["Blocks"] as List<string> ?? new List<string>();
+    var selectedBlock = ViewData["SelectedBlock"]?.ToString() ?? "ALL";
+    var selectedStatus = ViewData["SelectedStatus"] as propcontrol360.Models.PropertyStatus?;
+    var masterPlanImageUrl = ViewData["MasterPlanImageUrl"]?.ToString() ?? "/images/masterplan_aerial.jpg";
+
+    var totalLots = Model.Count();
+    var availableLots = Model.Count(p => p.Status == propcontrol360.Models.PropertyStatus.Disponible);
+    var reservedLots = Model.Count(p => p.Status == propcontrol360.Models.PropertyStatus.Reservado);
+    var soldLots = Model.Count(p => p.Status == propcontrol360.Models.PropertyStatus.Vendido);
+    var totalArea = Model.Sum(p => p.AreaSqM);
+    var percentSold = totalLots > 0 ? (int)Math.Round(((double)(soldLots + reservedLots) / totalLots) * 100) : 0;
+}
+
+<style>
+    .masterplan-card {
+        background: #0f172a;
+        border-radius: 1.25rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+        color: #f8fafc;
+        overflow: hidden;
+    }
+    
+    /* Fixed Map Container */
+    .map-fixed-container {
+        position: relative;
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        background: #020617;
+        border-radius: 1rem;
+        border: 2px solid rgba(255, 255, 255, 0.15);
+        box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+        overflow: hidden;
+        user-select: none;
+    }
+    
+    .map-canvas-layer {
+        position: relative;
+        width: 100%;
+        display: block;
+    }
+    
+    .map-base-img {
+        width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 0.85rem;
+        pointer-events: none;
+    }
+    
+    /* SVG Overlay Layer for Polygonal Lots */
+    .map-svg-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+    }
+
+    .lot-poly-shape {
+        cursor: pointer;
+        transition: fill-opacity 0.2s ease, stroke-width 0.2s ease, filter 0.2s ease;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+    }
+
+    .lot-poly-avail {
+        fill: rgba(16, 185, 129, 0.65);
+        stroke: #34d399;
+        stroke-width: 0.35;
+    }
+    .lot-poly-resv {
+        fill: rgba(245, 158, 11, 0.7);
+        stroke: #fbbf24;
+        stroke-width: 0.35;
+    }
+    .lot-poly-sold {
+        fill: rgba(239, 68, 68, 0.75);
+        stroke: #f87171;
+        stroke-width: 0.35;
+    }
+
+    /* Hover effect in View Mode */
+    .view-mode .lot-poly-shape:hover {
+        fill-opacity: 0.95;
+        stroke-width: 0.7;
+        stroke: #ffffff;
+        filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.9));
+    }
+
+    .lot-svg-label {
+        font-weight: 900;
+        font-family: sans-serif;
+        fill: #ffffff;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+        pointer-events: none;
+        text-anchor: middle;
+        dominant-baseline: central;
+    }
+    .lot-svg-sublabel {
+        font-weight: 600;
+        font-family: sans-serif;
+        fill: rgba(255, 255, 255, 0.9);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+        pointer-events: none;
+        text-anchor: middle;
+        dominant-baseline: central;
+    }
+
+    /* EDIT MODE VERTEX HANDLES & CONTROLS */
+    .edit-mode .lot-poly-shape {
+        cursor: move !important;
+    }
+    .edit-mode .lot-poly-shape.active-editing {
+        stroke: #38bdf8 !important;
+        stroke-width: 0.8 !important;
+        stroke-dasharray: 1, 0.5;
+        fill-opacity: 0.85;
+    }
+
+    .vertex-handle {
+        display: none;
+        cursor: crosshair;
+        fill: #38bdf8;
+        stroke: #ffffff;
+        stroke-width: 0.15;
+        transition: r 0.15s ease, fill 0.15s ease;
+    }
+    .edit-mode .vertex-handle {
+        display: block;
+    }
+    .vertex-handle:hover {
+        r: 0.65 !important;
+        fill: #f59e0b !important;
+        stroke: #ffffff;
+        stroke-width: 0.2;
+    }
+
+    /* Floating Editor Bar */
+    .editor-control-toolbar {
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(12px);
+        border: 1.5px solid #38bdf8;
+        border-radius: 1rem;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.6);
+        color: #ffffff;
+        padding: 0.85rem 1.25rem;
+    }
+
+    /* Grid cards style */
+    .lot-card-box {
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        border: 2px solid transparent;
+        position: relative;
+        overflow: hidden;
+    }
+    .lot-card-box:hover {
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.5);
+        z-index: 10;
+    }
+    .lot-available {
+        background: linear-gradient(145deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.25));
+        border-color: rgba(16, 185, 129, 0.4);
+    }
+    .lot-reserved {
+        background: linear-gradient(145deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.25));
+        border-color: rgba(245, 158, 11, 0.4);
+    }
+    .lot-sold {
+        background: linear-gradient(145deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.25));
+        border-color: rgba(239, 68, 68, 0.4);
+        opacity: 0.85;
+    }
+    .block-header-tag {
+        background: rgba(31, 41, 55, 0.8);
+        border: 1px solid rgba(75, 85, 99, 0.5);
+        backdrop-filter: blur(8px);
+    }
+    .crm-modal-calc-box {
+        border: 1.5px solid #10b981;
+        background: #f0fdf4;
+        border-radius: 0.75rem;
+    }
+    .crm-modal-price {
+        color: #059669;
+        font-weight: 800;
+    }
+</style>
+
+<!-- Clean, Customer-Focused Header (Modo Apartado / Selección) -->
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center gap-3">
+        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary btn-icon" title="Volver al Catálogo">
+            <i class="ti ti-arrow-left fs-3"></i>
+        </a>
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h2 class="fw-extrabold text-dark mb-0 fs-2">@selectedProject</h2>
+                <!-- Project Selector Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-ghost-dark dropdown-toggle p-1 fw-bold" type="button" data-bs-toggle="dropdown">
+                        Cambiar Proyecto
+                    </button>
+                    <div class="dropdown-menu shadow">
+                        @foreach (var proj in projects)
+                        {
+                            <a class="dropdown-item @(proj == selectedProject ? "active fw-bold" : "")" asp-action="MasterPlan" asp-route-projectName="@proj">
+                                🏢 @proj
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+            <p class="text-muted small mb-0">
+                <i class="ti ti-pointer me-1 text-success"></i> Haz clic sobre cualquier lote para ver dimensiones y solicitar reserva.
+            </p>
+        </div>
+    </div>
+
+    <!-- Right Controls: Legend & Admin/Edit Mode Toggle -->
+    <div class="d-flex align-items-center gap-3">
+        <!-- Legend Badges -->
+        <div class="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded-pill shadow-sm border small">
+            <div class="d-flex align-items-center gap-1">
+                <span class="badge bg-success rounded-circle p-1"></span> <span class="fw-bold text-dark">Disponible (@availableLots)</span>
+            </div>
+            <div class="d-flex align-items-center gap-1 ms-2">
+                <span class="badge bg-warning rounded-circle p-1"></span> <span class="text-muted">Reservado (@reservedLots)</span>
+            </div>
+            <div class="d-flex align-items-center gap-1 ms-2">
+                <span class="badge bg-danger rounded-circle p-1"></span> <span class="text-muted">Vendido (@soldLots)</span>
+            </div>
+        </div>
+
+        <!-- Botón para Abrir / Cerrar Modo Edición -->
+        <button type="button" class="btn btn-outline-primary fw-bold shadow-sm" id="btnToggleAdminPanel" onclick="toggleAdminPanel()">
+            <i class="ti ti-edit me-1"></i> <span id="textAdminBtn">Modo Edición</span>
+        </button>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- PANEL ADMINISTRATIVO & EDICIÓN (OCULTO EN VISTA CLIENTE) -->
+<!-- ========================================== -->
+<div id="adminPanelSection" class="d-none mb-4">
+    <!-- Admin Controls Bar -->
+    <div class="card shadow-sm border-0 mb-3 bg-light">
+        <div class="card-body p-3">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary p-2"><i class="ti ti-adjustments-horizontal fs-4"></i></span>
+                    <strong class="text-dark">Panel de Control & Herramientas de Edición</strong>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <!-- View Mode Switcher -->
+                    <div class="btn-group p-1 bg-white rounded-pill shadow-sm border" role="group">
+                        <button type="button" class="btn btn-sm btn-success rounded-pill fw-bold" id="btnModeAerial" onclick="switchViewMode('aerial')">
+                            <i class="ti ti-photo me-1"></i> Plano Aéreo
+                        </button>
+                        <button type="button" class="btn btn-sm btn-ghost-dark rounded-pill fw-bold" id="btnModeGrid" onclick="switchViewMode('grid')">
+                            <i class="ti ti-layout-grid me-1"></i> Matriz de Manzanas
+                        </button>
+                    </div>
+
+                    <!-- Boton de Modo Editor / Mapeo de Lotes -->
+                    <button type="button" class="btn btn-primary fw-bold" id="btnToggleEditorMode" onclick="toggleEditorMode()">
+                        <i class="ti ti-polygon me-1"></i> <span id="textEditorMode">Editar Esquinas & Formas</span>
+                    </button>
+
+                    <a asp-controller="Projects" asp-action="Index" class="btn btn-outline-primary fw-bold">
+                        <i class="ti ti-settings me-1"></i> Configurar Proyectos
+                    </a>
+                    <a asp-action="Create" asp-route-category="Lote" asp-route-projectName="@selectedProject" class="btn btn-success fw-bold">
+                        <i class="ti ti-plus me-1"></i> Registrar Lote
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filter Controls inside Admin -->
+            <form method="get" asp-action="MasterPlan" id="filterForm">
+                <input type="hidden" name="projectName" value="@selectedProject" />
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted mb-1">Filtrar por Manzana</label>
+                        <select name="blockCode" class="form-select form-select-sm" onchange="document.getElementById('filterForm').submit();">
+                            <option value="ALL" selected="@(selectedBlock == "ALL")">Todas las Manzanas (@blocks.Count)</option>
+                            @foreach (var b in blocks)
+                            {
+                                <option value="@b" selected="@(b == selectedBlock)">📍 @b</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted mb-1">Filtrar por Disponibilidad</label>
+                        <select name="status" class="form-select form-select-sm" onchange="document.getElementById('filterForm').submit();">
+                            <option value="">Todos los Estados</option>
+                            <option value="Disponible" selected="@(selectedStatus == propcontrol360.Models.PropertyStatus.Disponible)">🟢 Disponibles</option>
+                            <option value="Reservado" selected="@(selectedStatus == propcontrol360.Models.PropertyStatus.Reservado)">🟡 Reservados</option>
+                            <option value="Vendido" selected="@(selectedStatus == propcontrol360.Models.PropertyStatus.Vendido)">🔴 Vendidos</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quick Statistics KPI Cards -->
+    <div class="row g-3">
+        <div class="col-6 col-md-3">
+            <div class="card card-sm shadow-sm border-0 border-start border-4 border-primary">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="subheader text-muted">Total Lotes</div>
+                        <div class="ms-auto text-primary fs-3"><i class="ti ti-layout-grid"></i></div>
+                    </div>
+                    <div class="h2 mb-0 fw-extrabold text-dark">@totalLots</div>
+                    <div class="text-muted small">@totalArea.ToString("N0") m² totales</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card card-sm shadow-sm border-0 border-start border-4 border-success">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="subheader text-success">Disponibles</div>
+                        <div class="ms-auto text-success fs-3"><i class="ti ti-circle-check"></i></div>
+                    </div>
+                    <div class="h2 mb-0 fw-extrabold text-success">@availableLots</div>
+                    <div class="text-muted small">Listos para reserva</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card card-sm shadow-sm border-0 border-start border-4 border-warning">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="subheader text-warning">Reservados</div>
+                        <div class="ms-auto text-warning fs-3"><i class="ti ti-clock"></i></div>
+                    </div>
+                    <div class="h2 mb-0 fw-extrabold text-warning">@reservedLots</div>
+                    <div class="text-muted small">En proceso de contrato</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card card-sm shadow-sm border-0 border-start border-4 border-danger">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="subheader text-danger">Vendidos (@percentSold%)</div>
+                        <div class="ms-auto text-danger fs-3"><i class="ti ti-lock"></i></div>
+                    </div>
+                    <div class="h2 mb-0 fw-extrabold text-danger">@soldLots</div>
+                    <div class="text-muted small">Escriturados / Financiados</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- 1. MODO: PLANO AÉREO CON LOTES INTERACTIVOS -->
+<!-- ========================================== -->
+<div class="masterplan-card p-3 p-md-4 mb-4" id="aerialViewContainer">
+    <!-- Floating Editor Bar (Shows only when in Edit Mode) -->
+    <div id="editorToolbar" class="editor-control-toolbar mb-3 d-none">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-info p-2"><i class="ti ti-polygon fs-4"></i></span>
+                <div>
+                    <strong class="text-info">Editor de Esquinas & Formas Poligonales</strong>
+                    <div class="small text-white-50">
+                        • <strong>Arrastra cualquier punto azul (esquina)</strong> para deformar el lote a la forma exacta del terreno.<br/>
+                        • <strong>Selecciona un lote</strong> para agregar más esquinas o moverlo completo.
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <button type="button" class="btn btn-sm btn-outline-info fw-bold" id="btnAddVertexBtn" onclick="addVertexToActiveLot()">
+                    <i class="ti ti-point me-1"></i> + Agregar Esquina
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-warning fw-bold" id="btnResetSquareBtn" onclick="resetActiveLotToSquare()">
+                    <i class="ti ti-square me-1"></i> Rectángulo 4 Esquinas
+                </button>
+                <button type="button" class="btn btn-success fw-bold px-3 shadow" onclick="saveAllLotPositions()">
+                    <i class="ti ti-device-floppy me-1"></i> Guardar Cambios
+                </button>
+                <button type="button" class="btn btn-secondary fw-bold" onclick="toggleEditorMode()">
+                    <i class="ti ti-check me-1"></i> Finalizar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map Fixed Container with SVG Overlay -->
+    <div class="map-fixed-container view-mode" id="mapMainContainer">
+        <div class="map-canvas-layer" id="mapCanvasLayer">
+            <!-- Aerial Background Image of the Development (Stays Fixed) -->
+            <img src="@masterPlanImageUrl" alt="Master Plan Aéreo" class="map-base-img" onerror="this.src='/images/masterplan_aerial.jpg';" />
+
+            <!-- Interactive SVG Overlay Layer (0 to 100 Coordinate System) -->
+            <svg class="map-svg-overlay" id="mapSvgOverlay" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <g id="svgLotsGroup"></g>
+                <g id="svgLabelsGroup"></g>
+                <g id="svgHandlesGroup"></g>
+            </svg>
+        </div>
+    </div>
+    
+    <div class="d-flex justify-content-between align-items-center text-muted small mt-3 px-1">
+        <div><i class="ti ti-click me-1"></i> Haz clic en cualquier lote verde para ver precio, dimensiones y solicitar apartado.</div>
+        <div>Disponibilidad en tiempo real</div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- 2. MODO: MATRIZ DE LOTES POR MANZANAS      -->
+<!-- ========================================== -->
+<div class="masterplan-card p-4 mb-4" id="gridViewContainer" style="display: none;">
+    @if (!Model.Any())
+    {
+        <div class="text-center py-5">
+            <i class="ti ti-folder-x fs-1 text-muted mb-3 d-block"></i>
+            <h3 class="fw-bold">No hay lotes registrados con este filtro</h3>
+            <p class="text-muted">Utiliza el botón "Registrar Lote" para comenzar a agregar lotes a este proyecto.</p>
+        </div>
+    }
+    else
+    {
+        var lotsByBlock = Model.GroupBy(p => p.BlockCode ?? "Manzana General").OrderBy(g => g.Key);
+
+        @foreach (var blockGroup in lotsByBlock)
+        {
+            <div class="mb-5">
+                <div class="d-flex align-items-center justify-content-between block-header-tag px-3 py-2 rounded-3 mb-3">
+                    <h4 class="mb-0 fw-bold text-white d-flex align-items-center">
+                        <i class="ti ti-building-community text-warning me-2"></i>
+                        <span>@blockGroup.Key</span>
+                        <span class="badge bg-dark ms-2">@blockGroup.Count() Lotes</span>
+                    </h4>
+                    <span class="text-secondary small">Haz clic en un lote para ver dimensiones y cotizador</span>
+                </div>
+
+                <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-3">
+                    @foreach (var lot in blockGroup)
+                    {
+                        var statusClass = lot.Status == propcontrol360.Models.PropertyStatus.Disponible ? "lot-available" :
+                                          lot.Status == propcontrol360.Models.PropertyStatus.Reservado ? "lot-reserved" : "lot-sold";
+
+                        var badgeBg = lot.Status == propcontrol360.Models.PropertyStatus.Disponible ? "bg-success" :
+                                      lot.Status == propcontrol360.Models.PropertyStatus.Reservado ? "bg-warning text-dark" : "bg-danger";
+
+                        <div class="col">
+                            <div class="card lot-card-box @statusClass h-100 p-2 rounded-3 text-start text-white" 
+                                 onclick="openLotModal(@lot.Id)"
+                                 data-bs-toggle="tooltip" 
+                                 data-bs-placement="top" 
+                                 title="Clic para ver detalles de @lot.LotNumber">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="fw-extrabold fs-3 text-white">@(lot.LotNumber ?? $"L-{lot.Id}")</span>
+                                    <span class="badge @badgeBg rounded-pill px-2 py-1 small">@lot.Status</span>
+                                </div>
+
+                                <div class="small text-white-50 mb-2">
+                                    <div><i class="ti ti-ruler-2 me-1"></i><strong>@lot.AreaSqM.ToString("N1")</strong> m²</div>
+                                    @if (lot.FrontMeters.HasValue)
+                                    {
+                                        <div><i class="ti ti-arrows-horizontal me-1"></i>F: @lot.FrontMeters.Value.ToString("N1")m</div>
+                                    }
+                                </div>
+
+                                <div class="mt-auto pt-2 border-top border-light border-opacity-10">
+                                    <div class="text-success fw-bold fs-4">$@lot.Price.ToString("N0")</div>
+                                    <div class="text-white-50 text-truncate" style="font-size: 0.75rem;">
+                                        <i class="ti ti-calculator me-1"></i>$@(Math.Round((lot.Price * 0.9m) / 72, 0).ToString("N0"))/m
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<!-- ========================================== -->
+<!-- CRM LOTES MODAL INTERACTIVO               -->
+<!-- ========================================== -->
+<div class="modal fade" id="crmLotModal" tabindex="-1" aria-labelledby="crmLotModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem; overflow: hidden;">
+            <!-- Modal Header -->
+            <div class="modal-header border-bottom py-3 px-4 bg-white align-items-center">
+                <h4 class="modal-title fw-bold text-dark mb-0 fs-3" id="modalLotTitle">Manzana 8 - Lote 6</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body p-4 bg-white">
+                <!-- Seccion Dimensiones -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center text-dark fw-bold mb-3 fs-4">
+                        <i class="ti ti-tag text-secondary me-2 fs-3"></i> Dimensiones
+                    </div>
+                    <div class="row text-center g-2 bg-light p-3 rounded-3 border">
+                        <div class="col-4 border-end">
+                            <div class="small text-muted mb-1">Superficie</div>
+                            <div class="fw-extrabold text-dark fs-3" id="modalSuperficie">1,133.10 m²</div>
+                        </div>
+                        <div class="col-4 border-end">
+                            <div class="small text-muted mb-1">Frente</div>
+                            <div class="fw-extrabold text-dark fs-3" id="modalFrente">28.33 m</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="small text-muted mb-1">Fondo</div>
+                            <div class="fw-extrabold text-dark fs-3" id="modalFondo">40 m</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seccion Precio -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center text-dark fw-bold mb-3 fs-4">
+                        <i class="ti ti-coin text-success me-2 fs-3"></i> Precio
+                    </div>
+                    <div class="bg-light p-3 rounded-3 border">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-secondary">Precio final</span>
+                            <span class="fs-2 fw-extrabold text-success" id="modalPrecioFinal">$283,275.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-secondary">Enganche mínimo (<span id="modalEnganchePct">10</span>%)</span>
+                            <span class="fw-bold text-success fs-4" id="modalEngancheMonto">$28,327.50</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-secondary">Saldo a financiar</span>
+                            <span class="fw-bold text-dark fs-4" id="modalSaldoFinanciar">$254,947.50</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seccion Opciones de Pago / Cotizador Interactivo -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center text-dark fw-bold mb-3 fs-4">
+                        <i class="ti ti-calculator text-primary me-2 fs-3"></i> Opciones de pago
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted fw-semibold">Selecciona un plazo</label>
+                        <select class="form-select form-select-lg fw-bold" id="selectPlazoMeses" onchange="calculateMonthlyPayment()">
+                            <option value="12">12 meses</option>
+                            <option value="24">24 meses</option>
+                            <option value="36">36 meses</option>
+                            <option value="48">48 meses</option>
+                            <option value="60">60 meses</option>
+                            <option value="72" selected>72 meses</option>
+                        </select>
+                    </div>
+
+                    <!-- Cuota Mensual Estimada Highlight Box -->
+                    <div class="crm-modal-calc-box p-3 text-center mb-2">
+                        <div class="text-muted small mb-1">Tu mensualidad sería de:</div>
+                        <div class="crm-modal-price fs-1" id="modalCuotaMensual">$3,540.94<span class="fs-4 text-muted fw-normal">/mes</span></div>
+                        <div class="small text-secondary" id="modalTextoPlazo">durante 72 meses</div>
+                    </div>
+                    <div class="text-center text-muted" style="font-size: 0.8rem;">
+                        *Montos aproximados sujetos a validación
+                    </div>
+                </div>
+
+                <!-- Boton CTA Principal estilo CRMLotes -->
+                <div class="text-center">
+                    <p class="text-muted small mb-2">¿Te interesa este lote?</p>
+                    <button type="button" class="btn btn-success btn-lg w-100 fw-bold py-3 shadow" id="btnContactarLote" onclick="handleReserveLot()">
+                        <i class="ti ti-mail-fast me-2"></i> Solicitar información / Reservar
+                    </button>
+                    <div class="d-flex justify-content-center gap-2 mt-3">
+                        <a href="#" id="btnEditarLoteModal" class="btn btn-sm btn-outline-secondary">
+                            <i class="ti ti-edit me-1"></i> Editar Lote
+                        </a>
+                        <a href="#" id="btnCrearContratoModal" class="btn btn-sm btn-outline-primary">
+                            <i class="ti ti-file-text me-1"></i> Crear Contrato
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Toggle Admin Panel Visibility
+        let isAdminPanelVisible = false;
+        function toggleAdminPanel() {
+            isAdminPanelVisible = !isAdminPanelVisible;
+            const panel = document.getElementById('adminPanelSection');
+            const btn = document.getElementById('btnToggleAdminPanel');
+            const text = document.getElementById('textAdminBtn');
+
+            if (isAdminPanelVisible) {
+                panel.classList.remove('d-none');
+                btn.className = 'btn btn-primary fw-bold shadow-sm';
+                text.textContent = 'Ocultar Edición';
+            } else {
+                panel.classList.add('d-none');
+                btn.className = 'btn btn-outline-primary fw-bold shadow-sm';
+                text.textContent = 'Modo Edición';
+                if (isEditorMode) toggleEditorMode();
+            }
+        }
+
+        // Data structure for all lots on the map
+        const lotsData = [
+            @foreach (var lot in Model)
+            {
+                var defaultIdx = Model.ToList().IndexOf(lot);
+                double defaultX = lot.MapPosX ?? (8.0 + (defaultIdx % 10) * 8.5);
+                double defaultY = lot.MapPosY ?? (25.0 + (defaultIdx / 10) * 16.0);
+                double defaultW = lot.MapWidth ?? 5.5;
+                double defaultH = lot.MapHeight ?? 8.5;
+                var polyCoords = lot.MapPolygonCoords ?? "";
+
+                <text>
+                {
+                    id: @lot.Id,
+                    title: "@(lot.Title?.Replace("\"", "\\\"") ?? "")",
+                    blockCode: "@(lot.BlockCode ?? "")",
+                    lotNumber: "@(lot.LotNumber ?? $"Lote {lot.Id}")",
+                    areaSqM: @lot.AreaSqM.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    price: @lot.Price.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    status: "@lot.Status.ToString()",
+                    statusClass: "@(lot.Status == propcontrol360.Models.PropertyStatus.Disponible ? "lot-poly-avail" : lot.Status == propcontrol360.Models.PropertyStatus.Reservado ? "lot-poly-resv" : "lot-poly-sold")",
+                    x: @defaultX.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    y: @defaultY.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    w: @defaultW.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    h: @defaultH.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    polygonCoords: "@polyCoords",
+                    vertices: parseVertices("@polyCoords", @defaultX, @defaultY, @defaultW, @defaultH)
+                },
+                </text>
+            }
+        ];
+
+        // Parse polygon points or generate standard 4 corners
+        function parseVertices(coordsStr, x, y, w, h) {
+            if (coordsStr && coordsStr.trim().length > 0) {
+                const pairs = coordsStr.trim().split(/\s+/);
+                const points = [];
+                for (let p of pairs) {
+                    const xy = p.split(',');
+                    if (xy.length === 2) {
+                        points.push({ x: parseFloat(xy[0]), y: parseFloat(xy[1]) });
+                    }
+                }
+                if (points.length >= 3) return points;
+            }
+            return [
+                { x: x, y: y },
+                { x: x + w, y: y },
+                { x: x + w, y: y + h },
+                { x: x, y: y + h }
+            ];
+        }
+
+        let isEditorMode = false;
+        let activeLotId = null;
+        let draggingVertex = null;
+        let draggingLot = null;
+
+        const svgLotsGroup = document.getElementById('svgLotsGroup');
+        const svgLabelsGroup = document.getElementById('svgLabelsGroup');
+        const svgHandlesGroup = document.getElementById('svgHandlesGroup');
+        const mapCanvas = document.getElementById('mapCanvasLayer');
+
+        // Render all lots on SVG
+        function renderSvgLots() {
+            svgLotsGroup.innerHTML = '';
+            svgLabelsGroup.innerHTML = '';
+            svgHandlesGroup.innerHTML = '';
+
+            lotsData.forEach(lot => {
+                const pointsStr = lot.vertices.map(v => `${v.x.toFixed(2)},${v.y.toFixed(2)}`).join(' ');
+
+                const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                poly.setAttribute('points', pointsStr);
+                poly.setAttribute('class', `lot-poly-shape ${lot.statusClass} ${activeLotId === lot.id ? 'active-editing' : ''}`);
+                poly.setAttribute('id', `poly-${lot.id}`);
+                poly.setAttribute('data-id', lot.id);
+
+                poly.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (!isEditorMode) {
+                        openLotModal(lot.id);
+                    } else {
+                        selectActiveLot(lot.id);
+                    }
+                });
+
+                poly.addEventListener('mousedown', (e) => {
+                    if (!isEditorMode) return;
+                    e.stopPropagation();
+                    selectActiveLot(lot.id);
+
+                    const mousePos = getSvgPoint(e);
+                    draggingLot = {
+                        lotId: lot.id,
+                        startX: mousePos.x,
+                        startY: mousePos.y,
+                        originalVertices: lot.vertices.map(v => ({ x: v.x, y: v.y }))
+                    };
+                });
+
+                svgLotsGroup.appendChild(poly);
+
+                // Label (Lot Number & Area)
+                const center = calculatePolygonCenter(lot.vertices);
+                const lotText = lot.lotNumber ? lot.lotNumber.replace('Lote', '').trim() : `${lot.id}`;
+
+                const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                textEl.setAttribute('x', center.x.toFixed(2));
+                textEl.setAttribute('y', (center.y - 0.7).toFixed(2));
+                textEl.setAttribute('class', 'lot-svg-label');
+                textEl.setAttribute('font-size', '2.2');
+                textEl.textContent = lotText;
+                svgLabelsGroup.appendChild(textEl);
+
+                const areaEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                areaEl.setAttribute('x', center.x.toFixed(2));
+                areaEl.setAttribute('y', (center.y + 1.2).toFixed(2));
+                areaEl.setAttribute('class', 'lot-svg-sublabel');
+                areaEl.setAttribute('font-size', '1.3');
+                areaEl.textContent = `${Math.round(lot.areaSqM)}m²`;
+                svgLabelsGroup.appendChild(areaEl);
+
+                // Vertex Handles (if in Edit Mode)
+                if (isEditorMode) {
+                    lot.vertices.forEach((vertex, idx) => {
+                        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        circle.setAttribute('cx', vertex.x.toFixed(2));
+                        circle.setAttribute('cy', vertex.y.toFixed(2));
+                        circle.setAttribute('r', activeLotId === lot.id ? '0.45' : '0.25');
+                        circle.setAttribute('class', 'vertex-handle');
+                        circle.setAttribute('data-lot-id', lot.id);
+                        circle.setAttribute('data-vertex-idx', idx);
+
+                        if (activeLotId === lot.id) {
+                            circle.style.fill = '#f59e0b';
+                            circle.style.stroke = '#ffffff';
+                            circle.style.strokeWidth = '0.15';
+                        } else {
+                            circle.style.fill = '#38bdf8';
+                            circle.style.stroke = '#ffffff';
+                            circle.style.strokeWidth = '0.1';
+                            circle.style.opacity = '0.6';
+                        }
+
+                        circle.addEventListener('mousedown', (e) => {
+                            e.stopPropagation();
+                            selectActiveLot(lot.id);
+                            draggingVertex = { lotId: lot.id, vertexIdx: idx };
+                        });
+
+                        circle.addEventListener('dblclick', (e) => {
+                            e.stopPropagation();
+                            deleteVertex(lot.id, idx);
+                        });
+
+                        svgHandlesGroup.appendChild(circle);
+                    });
+                }
+            });
+        }
+
+        function calculatePolygonCenter(vertices) {
+            let totalX = 0, totalY = 0;
+            vertices.forEach(v => { totalX += v.x; totalY += v.y; });
+            return { x: totalX / vertices.length, y: totalY / vertices.length };
+        }
+
+        function getSvgPoint(e) {
+            const rect = mapCanvas.getBoundingClientRect();
+            let x = ((e.clientX - rect.left) / rect.width) * 100;
+            let y = ((e.clientY - rect.top) / rect.height) * 100;
+            x = Math.max(0, Math.min(x, 100));
+            y = Math.max(0, Math.min(y, 100));
+            return { x, y };
+        }
+
+        window.addEventListener('mousemove', function (e) {
+            if (!isEditorMode) return;
+
+            if (draggingVertex) {
+                const pt = getSvgPoint(e);
+                const lot = lotsData.find(l => l.id === draggingVertex.lotId);
+                if (lot && lot.vertices[draggingVertex.vertexIdx]) {
+                    lot.vertices[draggingVertex.vertexIdx].x = pt.x;
+                    lot.vertices[draggingVertex.vertexIdx].y = pt.y;
+                    renderSvgLots();
+                }
+            } else if (draggingLot) {
+                const pt = getSvgPoint(e);
+                const deltaX = pt.x - draggingLot.startX;
+                const deltaY = pt.y - draggingLot.startY;
+                const lot = lotsData.find(l => l.id === draggingLot.lotId);
+                if (lot) {
+                    lot.vertices = draggingLot.originalVertices.map(v => ({
+                        x: Math.max(0, Math.min(v.x + deltaX, 100)),
+                        y: Math.max(0, Math.min(v.y + deltaY, 100))
+                    }));
+                    renderSvgLots();
+                }
+            }
+        });
+
+        window.addEventListener('mouseup', function () {
+            draggingVertex = null;
+            draggingLot = null;
+        });
+
+        function selectActiveLot(lotId) {
+            activeLotId = lotId;
+            renderSvgLots();
+        }
+
+        function addVertexToActiveLot() {
+            if (!activeLotId) {
+                if (lotsData.length > 0) activeLotId = lotsData[0].id;
+                else return;
+            }
+            const lot = lotsData.find(l => l.id === activeLotId);
+            if (!lot) return;
+
+            const last = lot.vertices[lot.vertices.length - 1];
+            const first = lot.vertices[0];
+            const newPt = {
+                x: (last.x + first.x) / 2 + 1.0,
+                y: (last.y + first.y) / 2 + 1.0
+            };
+            lot.vertices.push(newPt);
+            renderSvgLots();
+
+            Swal.fire({
+                title: 'Nueva Esquina Agregada',
+                text: `Se agregó una nueva esquina al ${lot.lotNumber}. Arrástrala para darle la forma deseada al terreno.`,
+                icon: 'info',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        }
+
+        function deleteVertex(lotId, vertexIdx) {
+            const lot = lotsData.find(l => l.id === lotId);
+            if (!lot || lot.vertices.length <= 3) {
+                Swal.fire('Atención', 'Un lote debe tener al menos 3 esquinas.', 'warning');
+                return;
+            }
+            lot.vertices.splice(vertexIdx, 1);
+            renderSvgLots();
+        }
+
+        function resetActiveLotToSquare() {
+            if (!activeLotId) return;
+            const lot = lotsData.find(l => l.id === activeLotId);
+            if (!lot) return;
+
+            const center = calculatePolygonCenter(lot.vertices);
+            const halfW = 2.8, halfH = 4.2;
+            lot.vertices = [
+                { x: center.x - halfW, y: center.y - halfH },
+                { x: center.x + halfW, y: center.y - halfH },
+                { x: center.x + halfW, y: center.y + halfH },
+                { x: center.x - halfW, y: center.y + halfH }
+            ];
+            renderSvgLots();
+        }
+
+        function toggleEditorMode() {
+            isEditorMode = !isEditorMode;
+            const container = document.getElementById('mapMainContainer');
+            const toolbar = document.getElementById('editorToolbar');
+            const textBtn = document.getElementById('textEditorMode');
+            const btnToggle = document.getElementById('btnToggleEditorMode');
+
+            if (isEditorMode) {
+                container.classList.remove('view-mode');
+                container.classList.add('edit-mode');
+                toolbar.classList.remove('d-none');
+                textBtn.textContent = 'Modo Vista';
+                btnToggle.className = 'btn btn-warning fw-bold';
+
+                if (lotsData.length > 0 && !activeLotId) {
+                    activeLotId = lotsData[0].id;
+                }
+
+                Swal.fire({
+                    title: 'Editor de Esquinas Activado',
+                    html: `
+                        <div class="text-start small">
+                            <p>• <strong>Arrastra cualquier esquina azul/dorada</strong> para deformar el lote a la forma de cualquier terreno (radial, curvo, trapecio o irregular).</p>
+                            <p>• Usa el botón <strong>"+ Agregar Esquina"</strong> para crear lotes de 5 o más lados.</p>
+                            <p>• Haz doble clic en una esquina para eliminarla.</p>
+                        </div>
+                    `,
+                    icon: 'info',
+                    confirmButtonText: '¡Entendido!'
+                });
+            } else {
+                container.classList.remove('edit-mode');
+                container.classList.add('view-mode');
+                toolbar.classList.add('d-none');
+                textBtn.textContent = 'Editar Esquinas & Formas';
+                btnToggle.className = 'btn btn-primary fw-bold';
+                activeLotId = null;
+            }
+            renderSvgLots();
+        }
+
+        function saveAllLotPositions() {
+            const payload = lotsData.map(lot => {
+                const coordsStr = lot.vertices.map(v => `${v.x.toFixed(2)},${v.y.toFixed(2)}`).join(' ');
+                const xs = lot.vertices.map(v => v.x);
+                const ys = lot.vertices.map(v => v.y);
+                const minX = Math.min(...xs);
+                const maxX = Math.max(...xs);
+                const minY = Math.min(...ys);
+                const maxY = Math.max(...ys);
+
+                return {
+                    id: lot.id,
+                    x: minX,
+                    y: minY,
+                    w: maxX - minX,
+                    h: maxY - minY,
+                    polygonCoords: coordsStr
+                };
+            });
+
+            fetch('/Properties/SaveAllLotCoordinates', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    Swal.fire({
+                        title: '¡Guardado!',
+                        text: res.message,
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    toggleEditorMode();
+                } else {
+                    Swal.fire('Error', res.message, 'error');
+                }
+            })
+            .catch(err => {
+                Swal.fire('Error', 'No se pudieron guardar las posiciones y formas.', 'error');
+            });
+        }
+
+        function switchViewMode(mode) {
+            const aerialView = document.getElementById('aerialViewContainer');
+            const gridView = document.getElementById('gridViewContainer');
+            const btnAerial = document.getElementById('btnModeAerial');
+            const btnGrid = document.getElementById('btnModeGrid');
+
+            if (mode === 'aerial') {
+                aerialView.style.display = 'block';
+                gridView.style.display = 'none';
+                btnAerial.className = 'btn btn-sm btn-success rounded-pill fw-bold';
+                btnGrid.className = 'btn btn-sm btn-ghost-dark rounded-pill fw-bold';
+            } else {
+                aerialView.style.display = 'none';
+                gridView.style.display = 'block';
+                btnAerial.className = 'btn btn-sm btn-ghost-dark rounded-pill fw-bold';
+                btnGrid.className = 'btn btn-sm btn-success rounded-pill fw-bold';
+            }
+        }
+
+        let currentLotData = null;
+
+        function openLotModal(lotId) {
+            fetch(`/Properties/GetLotJson/${lotId}`)
+                .then(r => r.json())
+                .then(lot => {
+                    currentLotData = lot;
+                    
+                    document.getElementById('modalLotTitle').textContent = `${lot.blockCode} - ${lot.lotNumber}`;
+                    document.getElementById('modalSuperficie').textContent = `${parseFloat(lot.areaSqM).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} m²`;
+                    document.getElementById('modalFrente').textContent = `${parseFloat(lot.frontMeters).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} m`;
+                    document.getElementById('modalFondo').textContent = `${parseFloat(lot.depthMeters).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} m`;
+                    
+                    document.getElementById('modalPrecioFinal').textContent = `$${parseFloat(lot.price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                    document.getElementById('modalEnganchePct').textContent = `${lot.minDownPaymentPercent}`;
+                    document.getElementById('modalEngancheMonto').textContent = `$${parseFloat(lot.minDownPaymentAmount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                    document.getElementById('modalSaldoFinanciar').textContent = `$${parseFloat(lot.balanceToFinance).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                    
+                    document.getElementById('btnEditarLoteModal').href = `/Properties/Edit/${lot.id}`;
+                    document.getElementById('btnCrearContratoModal').href = `/Contracts/Create?propertyId=${lot.id}`;
+
+                    calculateMonthlyPayment();
+
+                    const modal = new bootstrap.Modal(document.getElementById('crmLotModal'));
+                    modal.show();
+                })
+                .catch(err => {
+                    Swal.fire('Error', 'No se pudieron cargar los datos del lote.', 'error');
+                });
+        }
+
+        function calculateMonthlyPayment() {
+            if (!currentLotData) return;
+            const months = parseInt(document.getElementById('selectPlazoMeses').value) || 72;
+            const balance = currentLotData.balanceToFinance;
+            const monthlyPayment = balance / months;
+
+            document.getElementById('modalCuotaMensual').innerHTML = `$${monthlyPayment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}<span class="fs-4 text-muted fw-normal">/mes</span>`;
+            document.getElementById('modalTextoPlazo').textContent = `durante ${months} meses`;
+        }
+
+        function handleReserveLot() {
+            if (!currentLotData) return;
+            const months = document.getElementById('selectPlazoMeses').value;
+            
+            Swal.fire({
+                title: `¿Reservar ${currentLotData.blockCode} - ${currentLotData.lotNumber}?`,
+                html: `
+                    <div class="text-start small text-muted mb-2">
+                        <p class="mb-1"><strong>Proyecto:</strong> ${currentLotData.projectName}</p>
+                        <p class="mb-1"><strong>Superficie:</strong> ${currentLotData.areaSqM} m²</p>
+                        <p class="mb-1"><strong>Precio Final:</strong> $${parseFloat(currentLotData.price).toLocaleString('en-US', {minimumFractionDigits: 2})} USD</p>
+                        <p class="mb-1"><strong>Enganche Estimado:</strong> $${parseFloat(currentLotData.minDownPaymentAmount).toLocaleString('en-US', {minimumFractionDigits: 2})} USD</p>
+                        <p class="mb-0"><strong>Plazo Seleccionado:</strong> ${months} meses</p>
+                    </div>
+                `,
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonColor: '#10b981',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Crear Contrato de Reserva',
+                cancelButtonText: 'Cerrar'
+            }).then((res) => {
+                if (res.isConfirmed) {
+                    window.location.href = `/Contracts/Create?propertyId=${currentLotData.id}`;
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSvgLots();
+        });
+    </script>
+}

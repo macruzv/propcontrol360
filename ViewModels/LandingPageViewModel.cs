@@ -6,6 +6,8 @@ namespace propcontrol360.ViewModels
     {
         public List<Property> FeaturedProperties { get; set; } = new List<Property>();
         public List<Property> AllProperties { get; set; } = new List<Property>();
+        public List<Property> IndividualProperties { get; set; } = new List<Property>();
+        public List<Project> Projects { get; set; } = new List<Project>();
         public List<Agent> ActiveAgents { get; set; } = new List<Agent>();
 
         // Filtros de búsqueda

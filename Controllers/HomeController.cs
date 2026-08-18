@@ -37,10 +37,21 @@ namespace propcontrol360.Controllers
 
             var allProps = await query.ToListAsync();
 
+            var projects = await _context.Projects
+                .Include(p => p.Properties)
+                .OrderBy(p => p.Name)
+                .ToListAsync();
+
+            var individualProps = allProps
+                .Where(p => p.Category != PropertyCategory.Lote && p.Category != PropertyCategory.Terreno)
+                .ToList();
+
             var viewModel = new LandingPageViewModel
             {
                 FeaturedProperties = allProps.Where(p => p.Featured).ToList(),
                 AllProperties = allProps,
+                IndividualProperties = individualProps,
+                Projects = projects,
                 ActiveAgents = await _context.Agents.Where(a => a.IsActive).ToListAsync(),
                 SelectedCategory = category,
                 SearchTerm = search,
